@@ -26,6 +26,8 @@ console.print(Panel(table, expand=False, border_style="green"))
 data = console.input("Which of these files do you want to check? ")
 
 data = oc.load(f"{path}/{data}.yml")
+if not data:
+    print (f"mano, vai fazer um dado")
 print(data.get('step')) if data.get('step') else None
 print(data.get('tags')) if data.get('tags') else None
 print(data.get('body')) if data.get('body') else None
