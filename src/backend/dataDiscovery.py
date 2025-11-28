@@ -5,6 +5,7 @@ from rich.console import Console
 
 import os
 
+# ---------------- DESCOBERTA DE ARQUIVOS RELEVANTES ----------------------
 path = os.path.join(os.path.dirname(__file__), "dados")
 
 entries = os.listdir(path)
@@ -21,7 +22,9 @@ table.add_column(f"Relevant files found in {path}")
 if filteredFiles:
     for l in filteredFiles:
         table.add_row(f"{l.replace('.yml', '')}")
+# ---------------- DESCOBERTA DE ARQUIVOS RELEVANTES ----------------------
 
+#
 console.print(Panel(table, expand=False, border_style="green"))
 data = console.input("Which of these files do you want to check? ")
 
