@@ -17,27 +17,20 @@ type Handlers = Literal[
 def handleStep(data: DictConfig, payload: dict[str, Any]) -> bool:
     steps: int = payload.get('steps', 1)
     add: bool = payload.get('add', True)
-    if 'step' in data:
-        if add:
-            if (data.step + steps) <= 3:
-                data.step = data.step+steps
-            else:
-                print("ERROR: Trying to place kanban file into an unbound step.")
-                return False
-            return True
-        else:
-            if (data.step - steps) >= 0:
-                data.step = data.step-steps
-            else:
-                print("ERROR: Trying to place kanban file into an unbound step.")
-                return False
-            return True
-    else:
-        if steps >= 0 and steps <= 3:
-            data.step = steps
-            return True
-        print("ERROR: Trying to place kanban file into an unbound step.")
-        return False
+ 
+    MAX_STEP = 3
+    MIN_STEP = 0
+
+    currentStep = data.get('step', 0) if data.get('step') is not None else 0
+
+    target_step = currentStep + steps if add else currentStep - steps
+
+    if MIN_STEP <= target_step <= MAX_STEP:
+        data.step = target_step
+        return True
+
+    print(f"ERROR Step {target_step} is out of bounds ({MIN_STEP}-{MAX_STEP}).")
+    return False
 
 def handleDescEditor(data: DictConfig, payload: dict[str, Any]) -> bool:
     newEditor: str | None = payload.get('editor')
@@ -72,7 +65,6 @@ def handleDescClient(data: DictConfig, payload: dict[str, Any]) -> bool:
 def handleBody(data: DictConfig, payload: dict[str, Any]) -> bool:
     content = payload.get('body')
     placing = payload.get('bodyLocation', 'root')
-    desc: DictConfig = data.get('description')
 
     if not content:
         print("ERROR: no content passed")
@@ -81,7 +73,7 @@ def handleBody(data: DictConfig, payload: dict[str, Any]) -> bool:
     if placing == 'description':
         if 'description' not in data or data.description is None:
             data.description = {}
-            desc: DictConfig = data.get('description')
+        desc: DictConfig = data.get('description')
         desc.body = content
         return True
 
@@ -99,7 +91,7 @@ def handleTags(data: DictConfig, payload: dict[str, Any]) -> bool:
         data.tags = newTags
         return True
 
-    data.tags.extends(newTags)
+    data.tags.extend(newTags)
     return True
 
 def handleExpire(data: DictConfig, payload: dict[str, Any]) -> bool:
