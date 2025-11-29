@@ -14,6 +14,8 @@ type Handlers = Literal[
 'tags',
 ]
 
+
+# coisas a serem passadas: número de passos EM INT, True/False pra pergunta "devo adicionar?" se n for True, ele SUBTRAI
 def handleStep(data: DictConfig, payload: dict[str, Any]) -> bool:
     steps: int = payload.get('steps', 1)
     add: bool = payload.get('add', True)
@@ -32,6 +34,8 @@ def handleStep(data: DictConfig, payload: dict[str, Any]) -> bool:
     print(f"ERROR Step {target_step} is out of bounds ({MIN_STEP}-{MAX_STEP}).")
     return False
 
+
+# coisas a serem passadas: novo nome do editor para ser editado
 def handleDescEditor(data: DictConfig, payload: dict[str, Any]) -> bool:
     newEditor: str | None = payload.get('editor')
     desc: DictConfig = data.get('description')
@@ -47,6 +51,8 @@ def handleDescEditor(data: DictConfig, payload: dict[str, Any]) -> bool:
     desc.editor = newEditor
     return True
 
+
+# coisas a serem passadas: nome do cliente novo
 def handleDescClient(data: DictConfig, payload: dict[str, Any]) -> bool:
     newClient: str | None = payload.get('client')
     desc: DictConfig = data.get('description')
@@ -62,6 +68,9 @@ def handleDescClient(data: DictConfig, payload: dict[str, Any]) -> bool:
     desc.client = newClient
     return True
 
+
+# coisas a serem passadas: o conteúdo a ser adicionado, a localização do body, só temos description por enquanto,
+# mas se aumentar é só colocar outro elif
 def handleBody(data: DictConfig, payload: dict[str, Any]) -> bool:
     content = payload.get('body')
     placing = payload.get('bodyLocation', 'root')
@@ -103,6 +112,13 @@ def handleExpire(data: DictConfig, payload: dict[str, Any]) -> bool:
     data.expiration = newDate
     return True
 
+
+# front end passa: handlers a serem tratados
+# iterador (número do kanban específico)
+# lista de arquivos do usuário específico
+# caminho absoluto para os dados do kanban
+# chaves requisitadas pelos handlers pedidos
+# dados são tratados para as novas versões deles, caso não existam, passam a existir
 def transformHandler(
     actions: list[Handlers],
     iterator: int,

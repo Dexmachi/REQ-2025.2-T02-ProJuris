@@ -65,6 +65,12 @@ def getData(path: str, userFiles: list[str]) -> list[DictConfig] | None:
 
     return files if files else None
 
+
+# ISSO AQUI FAZ O SEGUINTE:
+# front end passa: caminho da _pasta de arquivos_ de dados de kanban
+# front end passa: _LISTA DE ARQUIVOS REFERENTES AO USUÁRIO_
+# front end passa: número específico do indice do kanban desejado
+# back end RECEBE: lista com apenas 1 ÚNICO dicionário para fazer handling de outras coisas do kanban
 def getDataGranular(path: str, userFiles: list[str], iterator: int) -> list[DictConfig] | None:
     if not userFiles or iterator < 0 or iterator >= len(userFiles):
         console.print(f"[bold red]ERROR:[/] {iterator} index is out of bounds.")

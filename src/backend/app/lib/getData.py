@@ -5,6 +5,11 @@ from .dataDiscovery import getData
 
 type Value = str | list[str] | int | list[Value] | None
 
+# front end passa: chave do dado que quer recolher
+# front end passa: caminho absoluto para os dados DO KANBAN
+# front end passa: lista de arquivos para o usuário específico
+# front end passa: se é pra pegar da DESCRIÇÃO ou do sistema como um todo (bom para body do todo vs body da descrição)
+# FRONT end recebe: dado requisitado com a chave
 def granularGetList(key: str, path: str, userFiles: list[str], isDesc: bool) -> Value:
     dataList = getData(path, userFiles)
     if not dataList:
