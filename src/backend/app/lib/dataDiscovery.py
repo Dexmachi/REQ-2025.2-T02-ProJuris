@@ -65,7 +65,7 @@ def getData(path: str, userFiles: list[str]) -> list[DictConfig] | None:
 
     return files if files else None
 
-def getDataGranular(path: str, userFiles: list[str], iterator: int) -> DictConfig | None:
+def getDataGranular(path: str, userFiles: list[str], iterator: int) -> list[DictConfig] | None:
     if not userFiles or iterator < 0 or iterator >= len(userFiles):
         console.print(f"[bold red]ERROR:[/] {iterator} index is out of bounds.")
         return None
@@ -81,7 +81,7 @@ def getDataGranular(path: str, userFiles: list[str], iterator: int) -> DictConfi
         data = oc.load(fullPath)
 
         if isinstance(data, DictConfig):
-            return data
+            return [data]
         else:
             console.print(f"[bold red]ERROR:[/] the file {targetFilename} is not a DictConfig.")
             return None
