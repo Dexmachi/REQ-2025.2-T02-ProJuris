@@ -9,7 +9,6 @@ const api = axios.create({
   },
 });
 
-// Interceptor para adicionar token
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
@@ -21,7 +20,6 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Interceptor para tratar erros
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -34,7 +32,6 @@ api.interceptors.response.use(
   }
 );
 
-// Funções da API
 export const dashboardAPI = {
   getDashboard: () => api.get('/dashboard'),
   getStats: () => api.get('/stats'),
@@ -45,9 +42,7 @@ export const demandasAPI = {
   getAll: () => api.get('/demandas'),
   getById: (id) => api.get(`/demandas/${id}`),
   create: (data) => api.post('/demandas', data),
-  update: (id, data) => api.put(`/demandas/${id}`, data),
   updateStatus: (id, status) => api.patch(`/demandas/${id}/status`, { status }),
-  delete: (id) => api.delete(`/demandas/${id}`),
   solicitarRevisao: (id) => api.post(`/demandas/${id}/solicitar-revisao`),
 };
 

@@ -1,18 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, Home, Folder, Users, TrendingUp, FileText, Plus, Settings, ChevronLeft, ChevronRight, Calendar, AlertTriangle, Clock, FolderOpen, CheckCircle, Menu } from 'lucide-react';
+import { Bell, Home, Folder, Users, TrendingUp, FileText, Plus, Settings, ChevronLeft, ChevronRight, Calendar, AlertTriangle, Clock, FolderOpen, Menu } from 'lucide-react';
+import '../../style/dashboardSocio.css';
 
-// Configuração da API
 const API_BASE_URL = 'http://localhost:5000/api';
 
 const DashboardSocio = () => {
-  // Estados
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [currentStatsIndex, setCurrentStatsIndex] = useState(0);
   const [dados, setDados] = useState(null);
   const [loading, setLoading] = useState(true);
   const [draggedCard, setDraggedCard] = useState(null);
 
-  // Dados mock (substituir por chamada real à API)
   const mockData = {
     user: {
       nome: 'Dr. Fausto Correia',
@@ -58,7 +56,6 @@ const DashboardSocio = () => {
     ]
   };
 
-  // Carregar dados
   useEffect(() => {
     loadDashboardData();
   }, []);
@@ -75,7 +72,6 @@ const DashboardSocio = () => {
     }
   };
 
-  // Menu items
   const menuItems = [
     { icon: Home, label: 'Processos', active: true },
     { icon: Folder, label: 'Tarefas' },
@@ -86,7 +82,6 @@ const DashboardSocio = () => {
     { icon: Settings, label: 'Configurações' }
   ];
 
-  // Stats data
   const statsData = dados ? [
     {
       icon: FolderOpen,
@@ -121,7 +116,6 @@ const DashboardSocio = () => {
     }
   ] : [];
 
-  // Navegação do carrossel
   const navigateStats = (direction) => {
     if (direction === 'prev' && currentStatsIndex > 0) {
       setCurrentStatsIndex(currentStatsIndex - 1);
@@ -130,7 +124,6 @@ const DashboardSocio = () => {
     }
   };
 
-  // Drag and Drop
   const handleDragStart = (e, demanda, status) => {
     setDraggedCard({ demanda, status });
     e.currentTarget.style.opacity = '0.5';
@@ -151,7 +144,6 @@ const DashboardSocio = () => {
 
     const { demanda, status: statusAntigo } = draggedCard;
 
-    // Mover demanda
     setDados(prev => {
       const newDados = { ...prev };
       const statusKey = getStatusKey(statusAntigo);
@@ -182,41 +174,37 @@ const DashboardSocio = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Carregando...</p>
-        </div>
+      <div className="loading-container">
+        <div className="loading-spinner"></div>
+        <p>Carregando...</p>
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="dashboard-container">
       {/* Sidebar */}
-      <aside className={`bg-blue-900 text-white transition-all duration-300 ${sidebarCollapsed ? 'w-20' : 'w-72'} fixed h-full overflow-y-auto z-50`}>
-        <div className="p-6 flex items-center justify-between">
-          {!sidebarCollapsed && <h2 className="text-2xl font-bold">LegisPRO</h2>}
+      <aside className={`sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
+        <div className="logo">
+          {!sidebarCollapsed && <h2>LegisPRO</h2>}
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="p-2 hover:bg-white/10 rounded"
+            className="toggle-sidebar"
           >
-            <Menu className="w-5 h-5" />
+            <Menu size={20} />
           </button>
         </div>
 
-        <nav className="mt-6">
+        <nav className="nav-menu">
           <ul>
             {menuItems.map((item, index) => {
               const Icon = item.icon;
               return (
                 <li
                   key={index}
-                  className={`px-6 py-3 cursor-pointer transition flex items-center gap-4 ${
-                    item.active ? 'bg-white/15 border-l-4 border-white' : 'hover:bg-white/10'
-                  } ${sidebarCollapsed ? 'justify-center' : ''}`}
+                  className={item.active ? 'active' : ''}
                 >
-                  <Icon className="w-5 h-5" />
+                  <Icon size={20} />
                   {!sidebarCollapsed && <span>{item.label}</span>}
                 </li>
               );
@@ -226,42 +214,36 @@ const DashboardSocio = () => {
       </aside>
 
       {/* Main Content */}
-      <main className={`flex-1 transition-all duration-300 ${sidebarCollapsed ? 'ml-20' : 'ml-72'} p-8 overflow-y-auto`}>
+      <main className={`main-content ${sidebarCollapsed ? 'expanded' : ''}`}>
         {/* Header */}
-        <header className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-semibold text-gray-800">Dashboard</h1>
-          <div className="flex items-center gap-6">
-            <div className="relative cursor-pointer">
-              <Bell className="w-6 h-6 text-gray-600" />
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-semibold">
-                3
-              </span>
+        <header className="header">
+          <h1>Dashboard</h1>
+          <div className="header-right">
+            <div className="notifications">
+              <Bell size={24} />
+              <span className="badge">3</span>
             </div>
-            <div className="flex items-center gap-3">
-              <img
-                src={dados?.user.avatar}
-                alt="User"
-                className="w-10 h-10 rounded-full"
-              />
-              <span className="font-medium">{dados?.user.nome}</span>
+            <div className="user-profile">
+              <img src={dados?.user.avatar} alt="User" />
+              <span>{dados?.user.nome}</span>
             </div>
           </div>
         </header>
 
         {/* Stats Carousel */}
-        <div className="mb-8">
-          <div className="flex items-center gap-4">
+        <div className="stats-carousel-wrapper">
+          <div className="stats-carousel-container">
             <button
               onClick={() => navigateStats('prev')}
               disabled={currentStatsIndex === 0}
-              className="bg-white border rounded-full w-10 h-10 flex items-center justify-center hover:bg-blue-900 hover:text-white transition disabled:opacity-30"
+              className="carousel-btn"
             >
-              <ChevronLeft className="w-5 h-5" />
+              <ChevronLeft size={20} />
             </button>
 
-            <div className="flex-1 overflow-hidden">
+            <div className="stats-carousel">
               <div
-                className="flex gap-6 transition-transform duration-400"
+                className="stats-grid"
                 style={{ transform: `translateX(-${currentStatsIndex * 51.5}%)` }}
               >
                 {statsData.map((stat, index) => {
@@ -269,23 +251,16 @@ const DashboardSocio = () => {
                   return (
                     <div
                       key={index}
-                      className={`bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition min-w-[calc(50%-12px)] flex gap-4 ${
-                        stat.critical ? 'bg-red-50 border-l-4 border-red-500' : ''
-                      }`}
+                      className={`stat-card ${stat.critical ? 'critical' : ''}`}
                     >
-                      <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
-                        stat.color === 'blue' ? 'bg-blue-100 text-blue-900' :
-                        stat.color === 'green' ? 'bg-green-100 text-green-600' :
-                        stat.color === 'red' ? 'bg-red-100 text-red-500' :
-                        'bg-yellow-100 text-yellow-600'
-                      }`}>
-                        <Icon className="w-6 h-6" />
+                      <div className={`stat-icon ${stat.color}`}>
+                        <Icon size={24} />
                       </div>
-                      <div>
-                        <h3 className="text-sm text-gray-600 mb-2">{stat.title}</h3>
-                        <p className="text-3xl font-bold text-gray-800">{stat.value}</p>
+                      <div className="stat-content">
+                        <h3>{stat.title}</h3>
+                        <p className="stat-value">{stat.value}</p>
                         {stat.change && (
-                          <p className={`text-xs ${stat.positive ? 'text-green-600' : 'text-red-500'}`}>
+                          <p className={`stat-change ${stat.positive ? 'positive' : 'negative'}`}>
                             {stat.change}
                           </p>
                         )}
@@ -299,23 +274,23 @@ const DashboardSocio = () => {
             <button
               onClick={() => navigateStats('next')}
               disabled={currentStatsIndex >= statsData.length - 2}
-              className="bg-white border rounded-full w-10 h-10 flex items-center justify-center hover:bg-blue-900 hover:text-white transition disabled:opacity-30"
+              className="carousel-btn"
             >
-              <ChevronRight className="w-5 h-5" />
+              <ChevronRight size={20} />
             </button>
           </div>
         </div>
 
         {/* Kanban Board */}
-        <div className="bg-white rounded-xl shadow-sm p-6 mb-8">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-semibold">Visão Geral - Kanban</h2>
-            <button className="text-blue-900 flex items-center gap-2 text-sm font-medium">
-              Ver Quadro Completo <ChevronRight className="w-4 h-4" />
+        <div className="kanban-section">
+          <div className="section-header">
+            <h2>Visão Geral - Kanban</h2>
+            <button className="btn-link">
+              Ver Quadro Completo <ChevronRight size={16} />
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+          <div className="kanban-board">
             {Object.entries(dados?.kanban || {}).map(([status, demandas]) => {
               const statusLabels = {
                 novos: 'Novos',
@@ -325,16 +300,14 @@ const DashboardSocio = () => {
               };
               
               return (
-                <div key={status} className="bg-gray-50 rounded-lg p-4 min-h-[300px]">
-                  <div className="flex justify-between items-center mb-4 pb-3 border-b-2">
-                    <h3 className="text-sm font-semibold">{statusLabels[status]}</h3>
-                    <span className="bg-gray-300 px-3 py-1 rounded-full text-xs font-bold">
-                      {demandas.length}
-                    </span>
+                <div key={status} className="kanban-column">
+                  <div className="column-header">
+                    <h3>{statusLabels[status]}</h3>
+                    <span className="count">{demandas.length}</span>
                   </div>
 
                   <div
-                    className="space-y-3"
+                    className="column-content"
                     onDragOver={handleDragOver}
                     onDrop={(e) => handleDrop(e, statusLabels[status])}
                   >
@@ -344,11 +317,11 @@ const DashboardSocio = () => {
                         draggable
                         onDragStart={(e) => handleDragStart(e, demanda, statusLabels[status])}
                         onDragEnd={handleDragEnd}
-                        className="bg-white p-4 rounded-lg border-l-4 border-blue-900 shadow-sm hover:shadow-md transition cursor-move"
+                        className="kanban-card"
                       >
-                        <p className="font-semibold text-sm mb-2">{demanda.id}</p>
-                        <div className="flex items-center gap-2 text-xs text-gray-600">
-                          <Calendar className="w-3 h-3" />
+                        <p className="processo-id">{demanda.id}</p>
+                        <div className="card-meta">
+                          <Calendar size={14} />
                           <span>{demanda.prazo}</span>
                         </div>
                       </div>
@@ -361,38 +334,34 @@ const DashboardSocio = () => {
         </div>
 
         {/* Notificações e Ações */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-xl font-semibold mb-6">Notificações</h2>
-            <div className="space-y-4">
+        <div className="bottom-section">
+          <div className="notifications-panel">
+            <h2>Notificações</h2>
+            <div className="notifications-list">
               {dados?.notificacoes.map((notif) => (
-                <div key={notif.id} className="flex gap-4 p-4 hover:bg-gray-50 rounded-lg">
-                  <Bell className="w-5 h-5 text-blue-900" />
-                  <div>
-                    <h4 className="text-sm font-semibold mb-1">
+                <div key={notif.id} className="notification-item">
+                  <Bell size={20} />
+                  <div className="notification-content">
+                    <h4>
                       {notif.tipo}
-                      {notif.urgente && (
-                        <span className="ml-2 bg-red-500 text-white px-2 py-0.5 rounded text-xs">
-                          Urgente
-                        </span>
-                      )}
+                      {notif.urgente && <span className="badge-urgente">Urgente</span>}
                     </h4>
-                    <p className="text-sm text-gray-600">{notif.mensagem}</p>
-                    <span className="text-xs text-gray-500">{notif.tempo}</span>
+                    <p>{notif.mensagem}</p>
+                    <span className="time">{notif.tempo}</span>
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-xl font-semibold mb-6">Ações Rápidas</h2>
-            <div className="space-y-3">
-              <button className="w-full flex items-center gap-4 p-4 bg-blue-900 text-white rounded-lg hover:bg-blue-800">
-                <Plus className="w-6 h-6" />
-                <div className="text-left text-sm">
-                  <div className="font-semibold">Novo Processo</div>
-                  <div className="text-xs opacity-90">Criar instantemente</div>
+          <div className="quick-actions">
+            <h2>Ações Rápidas</h2>
+            <div className="actions-list">
+              <button className="action-btn primary">
+                <Plus size={24} />
+                <div>
+                  <strong>Novo Processo</strong>
+                  <span>Criar instantemente</span>
                 </div>
               </button>
             </div>

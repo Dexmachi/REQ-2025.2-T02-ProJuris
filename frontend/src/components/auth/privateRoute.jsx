@@ -1,14 +1,26 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
-import { useAuth } from '../../context/authContext';
+import { useAuth } from '../../context/AuthContext';
 
 const PrivateRoute = ({ children, requiredRole }) => {
   const { user, loading } = useAuth();
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900"></div>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100vh'
+      }}>
+        <div style={{
+          width: '48px',
+          height: '48px',
+          border: '3px solid #e5e7eb',
+          borderTopColor: '#1e3a8a',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite'
+        }}></div>
       </div>
     );
   }
@@ -18,7 +30,6 @@ const PrivateRoute = ({ children, requiredRole }) => {
   }
 
   if (requiredRole && user.role !== requiredRole) {
-    // Redirecionar para dashboard correto
     if (user.role === 'socio') {
       return <Navigate to="/dashboard-socio" />;
     } else {

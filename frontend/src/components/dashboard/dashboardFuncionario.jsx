@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Bell, CheckCircle, Clock, Calendar, AlertTriangle, List, Eye, Send, MessageSquare, Menu, User } from 'lucide-react';
+import '../../style/dashboardFuncionario.css';
 
 const API_BASE_URL = 'http://localhost:5000/api';
 
@@ -8,11 +9,9 @@ const DashboardFuncionario = () => {
   const [dados, setDados] = useState(null);
   const [loading, setLoading] = useState(true);
   const [draggedCard, setDraggedCard] = useState(null);
-  const [filtroAtivo, setFiltroAtivo] = useState('todas');
-  const [searchTerm, setSearchTerm] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [demandaSelecionada, setDemandaSelecionada] = useState(null);
-  const [userId] = useState('123'); // Mock - virá da autenticação
+  const [userId] = useState('123');
 
   const mockData = {
     user: {
@@ -34,15 +33,6 @@ const DashboardFuncionario = () => {
           descricao: 'Ação de indenização por danos morais',
           prazo: '05/12/2024',
           prioridade: 'alta',
-          atribuidoPor: 'Dr. Fausto',
-          responsavelId: '123'
-        },
-        {
-          id: 'DEM-002',
-          titulo: 'Revisar contrato de prestação',
-          descricao: 'Contrato Cliente B',
-          prazo: '08/12/2024',
-          prioridade: 'normal',
           atribuidoPor: 'Dr. Fausto',
           responsavelId: '123'
         }
@@ -77,8 +67,7 @@ const DashboardFuncionario = () => {
           prazo: '25/11/2024',
           prioridade: 'normal',
           atribuidoPor: 'Dr. Fausto',
-          responsavelId: '123',
-          aprovadoEm: '25/11/2024'
+          responsavelId: '123'
         }
       ]
     },
@@ -90,14 +79,6 @@ const DashboardFuncionario = () => {
         tempo: 'Há 1 hora',
         lida: false,
         urgente: false
-      },
-      {
-        id: 2,
-        tipo: 'Prazo urgente',
-        mensagem: 'DEM-003 vence em 2 dias',
-        tempo: 'Há 3 horas',
-        lida: false,
-        urgente: true
       }
     ]
   };
@@ -148,20 +129,16 @@ const DashboardFuncionario = () => {
     const { demanda, status: statusAntigo } = draggedCard;
 
     // VALIDAÇÕES DE REGRAS DE NEGÓCIO
-    
-    // 1. Só pode mover suas próprias demandas
     if (demanda.responsavelId !== userId) {
       alert('❌ Você só pode mover demandas atribuídas a você!');
       return;
     }
 
-    // 2. Não pode voltar de aguardando_revisao
     if (statusAntigo === 'aguardando_revisao' && novoStatus === 'em_andamento') {
       alert('⚠️ Demandas em revisão não podem voltar. Aguarde aprovação do sócio.');
       return;
     }
 
-    // 3. Não pode marcar como concluída
     if (novoStatus === 'concluidas') {
       alert('⚠️ Apenas o sócio pode marcar demandas como concluídas. Envie para revisão.');
       return;
@@ -196,7 +173,6 @@ const DashboardFuncionario = () => {
 
   const solicitarRevisao = () => {
     if (demandaSelecionada) {
-      // Mover para aguardando revisão
       const statusAtual = Object.keys(dados.demandas).find(key =>
         dados.demandas[key].some(d => d.id === demandaSelecionada.id)
       );
@@ -215,13 +191,8 @@ const DashboardFuncionario = () => {
     }
   };
 
-  const getPrioridadeColor = (prioridade) => {
-    const colors = {
-      urgente: 'bg-red-100 text-red-600',
-      alta: 'bg-yellow-100 text-yellow-700',
-      normal: 'bg-blue-100 text-blue-700'
-    };
-    return colors[prioridade] || colors.normal;
+  const getPrioridadeClass = (prioridade) => {
+    return prioridade?.toLowerCase() || 'normal';
   };
 
   const getStatusLabel = (status) => {
@@ -236,41 +207,34 @@ const DashboardFuncionario = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Carregando...</p>
-        </div>
+      <div className="loading-container">
+        <div className="loading-spinner"></div>
+        <p>Carregando...</p>
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="dashboard-funcionario">
       {/* Sidebar */}
-      <aside className={`bg-blue-900 text-white transition-all duration-300 ${sidebarCollapsed ? 'w-20' : 'w-72'} fixed h-full overflow-y-auto z-50`}>
-        <div className="p-6 flex items-center justify-between">
-          {!sidebarCollapsed && <h2 className="text-2xl font-bold">LegisPRO</h2>}
+      <aside className={`sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
+        <div className="logo">
+          {!sidebarCollapsed && <h2>LegisPRO</h2>}
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="p-2 hover:bg-white/10 rounded"
+            className="toggle-sidebar"
           >
-            <Menu className="w-5 h-5" />
+            <Menu size={20} />
           </button>
         </div>
 
-        <nav className="mt-6">
+        <nav className="nav-menu">
           <ul>
             {menuItems.map((item, index) => {
               const Icon = item.icon;
               return (
-                <li
-                  key={index}
-                  className={`px-6 py-3 cursor-pointer transition flex items-center gap-4 ${
-                    item.active ? 'bg-white/15 border-l-4 border-white' : 'hover:bg-white/10'
-                  } ${sidebarCollapsed ? 'justify-center' : ''}`}
-                >
-                  <Icon className="w-5 h-5" />
+                <li key={index} className={item.active ? 'active' : ''}>
+                  <Icon size={20} />
                   {!sidebarCollapsed && <span>{item.label}</span>}
                 </li>
               );
@@ -280,99 +244,92 @@ const DashboardFuncionario = () => {
       </aside>
 
       {/* Main Content */}
-      <main className={`flex-1 transition-all duration-300 ${sidebarCollapsed ? 'ml-20' : 'ml-72'} p-8 overflow-y-auto`}>
+      <main className={`main-content ${sidebarCollapsed ? 'expanded' : ''}`}>
         {/* Header */}
-        <header className="mb-8">
-          <h1 className="text-3xl font-semibold text-gray-800">Minhas Demandas</h1>
-          <p className="text-gray-600 mt-1">
-            Olá, <strong>{dados?.user.nome}</strong>! Aqui estão suas tarefas.
-          </p>
-          <div className="flex items-center gap-6 mt-4">
-            <div className="relative cursor-pointer">
-              <Bell className="w-6 h-6 text-gray-600" />
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+        <header className="header">
+          <div>
+            <h1>Minhas Demandas</h1>
+            <p className="subtitle">
+              Olá, <strong>{dados?.user.nome}</strong>! Aqui estão suas tarefas.
+            </p>
+          </div>
+          <div className="header-right">
+            <div className="notifications">
+              <Bell size={24} />
+              <span className="badge">
                 {dados?.notificacoes.filter(n => !n.lida).length}
               </span>
             </div>
-            <img
-              src={dados?.user.avatar}
-              alt="User"
-              className="w-10 h-10 rounded-full"
-            />
+            <img src={dados?.user.avatar} alt="User" className="user-avatar" />
           </div>
         </header>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white p-6 rounded-xl shadow-sm flex gap-4">
-            <div className="w-12 h-12 rounded-lg bg-blue-100 text-blue-900 flex items-center justify-center">
-              <List className="w-6 h-6" />
+        <div className="stats-grid">
+          <div className="stat-card">
+            <div className="stat-icon blue">
+              <List size={24} />
             </div>
-            <div>
-              <h3 className="text-sm text-gray-600">Atribuídas</h3>
-              <p className="text-3xl font-bold">{dados?.stats.total}</p>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-xl shadow-sm flex gap-4">
-            <div className="w-12 h-12 rounded-lg bg-green-100 text-green-600 flex items-center justify-center">
-              <Clock className="w-6 h-6" />
-            </div>
-            <div>
-              <h3 className="text-sm text-gray-600">Em Andamento</h3>
-              <p className="text-3xl font-bold">{dados?.stats.emAndamento}</p>
+            <div className="stat-content">
+              <h3>Atribuídas</h3>
+              <p className="stat-value">{dados?.stats.total}</p>
             </div>
           </div>
 
-          <div className="bg-yellow-50 p-6 rounded-xl shadow-sm flex gap-4 border-l-4 border-yellow-500">
-            <div className="w-12 h-12 rounded-lg bg-yellow-100 text-yellow-600 flex items-center justify-center">
-              <Clock className="w-6 h-6" />
+          <div className="stat-card">
+            <div className="stat-icon green">
+              <Clock size={24} />
             </div>
-            <div>
-              <h3 className="text-sm text-gray-600">Aguardando Revisão</h3>
-              <p className="text-3xl font-bold">{dados?.stats.aguardandoRevisao}</p>
+            <div className="stat-content">
+              <h3>Em Andamento</h3>
+              <p className="stat-value">{dados?.stats.emAndamento}</p>
             </div>
           </div>
 
-          <div className="bg-red-50 p-6 rounded-xl shadow-sm flex gap-4 border-l-4 border-red-500">
-            <div className="w-12 h-12 rounded-lg bg-red-100 text-red-500 flex items-center justify-center">
-              <AlertTriangle className="w-6 h-6" />
+          <div className="stat-card yellow-card">
+            <div className="stat-icon yellow">
+              <Clock size={24} />
             </div>
-            <div>
-              <h3 className="text-sm text-gray-600">Urgentes</h3>
-              <p className="text-3xl font-bold">{dados?.stats.urgentes}</p>
+            <div className="stat-content">
+              <h3>Aguardando Revisão</h3>
+              <p className="stat-value">{dados?.stats.aguardandoRevisao}</p>
+            </div>
+          </div>
+
+          <div className="stat-card critical">
+            <div className="stat-icon red">
+              <AlertTriangle size={24} />
+            </div>
+            <div className="stat-content">
+              <h3>Urgentes</h3>
+              <p className="stat-value">{dados?.stats.urgentes}</p>
             </div>
           </div>
         </div>
 
         {/* Kanban */}
-        <div className="bg-white rounded-xl shadow-sm p-6 mb-8">
-          <h2 className="text-xl font-semibold mb-6">Quadro de Demandas</h2>
+        <div className="kanban-section">
+          <h2>Quadro de Demandas</h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+          <div className="kanban-board">
             {Object.entries(dados?.demandas || {}).map(([status, demandas]) => (
               <div
                 key={status}
-                className={`rounded-lg p-4 min-h-[300px] ${
-                  status === 'aguardando_revisao' ? 'bg-yellow-50' :
-                  status === 'concluidas' ? 'bg-green-50' : 'bg-gray-50'
-                }`}
+                className={`kanban-column ${status === 'aguardando_revisao' ? 'revision' : ''} ${status === 'concluidas' ? 'success' : ''}`}
               >
-                <div className="flex justify-between items-center mb-4 pb-3 border-b-2">
-                  <h3 className="text-sm font-semibold flex items-center gap-2">
-                    {status === 'novas' && <List className="w-4 h-4" />}
-                    {status === 'em_andamento' && <Clock className="w-4 h-4" />}
-                    {status === 'aguardando_revisao' && <Clock className="w-4 h-4" />}
-                    {status === 'concluidas' && <CheckCircle className="w-4 h-4" />}
+                <div className="column-header">
+                  <h3>
+                    {status === 'novas' && <List size={16} />}
+                    {status === 'em_andamento' && <Clock size={16} />}
+                    {status === 'aguardando_revisao' && <Clock size={16} />}
+                    {status === 'concluidas' && <CheckCircle size={16} />}
                     {getStatusLabel(status)}
                   </h3>
-                  <span className="bg-gray-300 px-3 py-1 rounded-full text-xs font-bold">
-                    {demandas.length}
-                  </span>
+                  <span className="count">{demandas.length}</span>
                 </div>
 
                 <div
-                  className="space-y-3"
+                  className="column-content"
                   onDragOver={handleDragOver}
                   onDrop={(e) => handleDrop(e, status)}
                 >
@@ -382,31 +339,29 @@ const DashboardFuncionario = () => {
                       draggable
                       onDragStart={(e) => handleDragStart(e, demanda, status)}
                       onDragEnd={handleDragEnd}
-                      className={`bg-white p-4 rounded-lg shadow-sm hover:shadow-md transition cursor-move border-l-4 ${
-                        status === 'aguardando_revisao' ? 'border-yellow-500' :
-                        status === 'concluidas' ? 'border-green-500' : 'border-blue-900'
-                      }`}
+                      className="kanban-card"
                     >
-                      <div className="flex justify-between items-start mb-2">
-                        <span className="font-bold text-sm">{demanda.id}</span>
-                        <span className={`px-2 py-1 rounded text-xs font-semibold ${getPrioridadeColor(demanda.prioridade)}`}>
+                      <div className="card-header">
+                        <span className="processo-id">{demanda.id}</span>
+                        <span className={`priority-badge ${getPrioridadeClass(demanda.prioridade)}`}>
                           {demanda.prioridade}
                         </span>
                       </div>
                       
-                      <h4 className="font-semibold text-sm mb-2">{demanda.titulo}</h4>
-                      <p className="text-xs text-gray-600 mb-3">{demanda.descricao}</p>
+                      <h4 className="card-title">{demanda.titulo}</h4>
+                      <p className="card-description">{demanda.descricao}</p>
                       
-                      <div className="flex items-center justify-between text-xs text-gray-500">
-                        <div className="flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />
-                          {demanda.prazo}
+                      <div className="card-footer">
+                        <div className="card-meta">
+                          <Calendar size={14} />
+                          <span>{demanda.prazo}</span>
                         </div>
                         <button
                           onClick={() => verDetalhes(demanda)}
-                          className="text-blue-900 hover:text-blue-700"
+                          className="btn-icon"
+                          title="Ver detalhes"
                         >
-                          <Eye className="w-4 h-4" />
+                          <Eye size={16} />
                         </button>
                       </div>
                     </div>
@@ -418,28 +373,22 @@ const DashboardFuncionario = () => {
         </div>
 
         {/* Notificações */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h2 className="text-xl font-semibold mb-6">Notificações</h2>
-          <div className="space-y-4">
+        <div className="notifications-section">
+          <h2>Notificações</h2>
+          <div className="notifications-list">
             {dados?.notificacoes.map((notif) => (
               <div
                 key={notif.id}
-                className={`flex gap-4 p-4 rounded-lg ${
-                  !notif.lida ? 'bg-blue-50 border-l-4 border-blue-900' : 'hover:bg-gray-50'
-                }`}
+                className={`notification-item ${!notif.lida ? 'unread' : ''}`}
               >
-                <Bell className={`w-5 h-5 ${notif.urgente ? 'text-red-500' : 'text-blue-900'}`} />
-                <div className="flex-1">
-                  <h4 className="text-sm font-semibold flex items-center gap-2">
+                <Bell size={20} className={notif.urgente ? 'urgent' : ''} />
+                <div className="notification-content">
+                  <h4>
                     {notif.tipo}
-                    {notif.urgente && (
-                      <span className="bg-red-500 text-white px-2 py-0.5 rounded text-xs">
-                        Urgente
-                      </span>
-                    )}
+                    {notif.urgente && <span className="badge-urgente">Urgente</span>}
                   </h4>
-                  <p className="text-sm text-gray-600">{notif.mensagem}</p>
-                  <span className="text-xs text-gray-500">{notif.tempo}</span>
+                  <p>{notif.mensagem}</p>
+                  <span className="time">{notif.tempo}</span>
                 </div>
               </div>
             ))}
@@ -449,40 +398,37 @@ const DashboardFuncionario = () => {
 
       {/* Modal */}
       {modalOpen && demandaSelecionada && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b flex justify-between items-center">
-              <h2 className="text-xl font-semibold">{demandaSelecionada.id} - Detalhes</h2>
-              <button onClick={() => setModalOpen(false)} className="text-gray-600 hover:text-red-500">
+        <div className="modal-overlay" onClick={() => setModalOpen(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>{demandaSelecionada.id} - Detalhes</h2>
+              <button onClick={() => setModalOpen(false)} className="btn-close">
                 ✕
               </button>
             </div>
             
-            <div className="p-6">
-              <h3 className="text-lg font-semibold mb-2">{demandaSelecionada.titulo}</h3>
-              <p className="text-gray-600 mb-6">{demandaSelecionada.descricao}</p>
+            <div className="modal-body">
+              <h3>{demandaSelecionada.titulo}</h3>
+              <p className="modal-description">{demandaSelecionada.descricao}</p>
               
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div>
-                  <label className="text-xs font-semibold text-gray-600 uppercase">Prazo</label>
-                  <p className="text-sm">{demandaSelecionada.prazo}</p>
+              <div className="detail-grid">
+                <div className="detail-item">
+                  <label>Prazo</label>
+                  <p>{demandaSelecionada.prazo}</p>
                 </div>
-                <div>
-                  <label className="text-xs font-semibold text-gray-600 uppercase">Prioridade</label>
-                  <p className="text-sm">{demandaSelecionada.prioridade}</p>
+                <div className="detail-item">
+                  <label>Prioridade</label>
+                  <p>{demandaSelecionada.prioridade}</p>
                 </div>
               </div>
 
-              <div className="flex gap-3">
-                <button
-                  onClick={solicitarRevisao}
-                  className="flex items-center gap-2 px-6 py-3 bg-blue-900 text-white rounded-lg hover:bg-blue-800"
-                >
-                  <Send className="w-5 h-5" />
+              <div className="modal-actions">
+                <button onClick={solicitarRevisao} className="btn-primary">
+                  <Send size={20} />
                   Solicitar Revisão
                 </button>
-                <button className="flex items-center gap-2 px-6 py-3 border rounded-lg hover:bg-gray-50">
-                  <MessageSquare className="w-5 h-5" />
+                <button className="btn-secondary">
+                  <MessageSquare size={20} />
                   Comentar
                 </button>
               </div>
