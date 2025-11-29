@@ -6,6 +6,8 @@ from rich.console import Console
 
 import os
 
+console = Console()
+
 # ------------ MÓDULO DE DATA DISCOVERY. RETORNA UMA LISTA DE DictConfig CARREGADO PELO OMEGACONF. ----------
 
 # ---------------- DESCOBERTA DE ARQUIVOS RELEVANTES ----------------------
@@ -15,7 +17,7 @@ def pathDiscovery(path: str) -> tuple[str, list[str] | None, Table]:
     table.add_column(f"Relevant files found in {path}")
 
     fileType="json"
-    
+
     try:
         entries = os.listdir(path)
     except FileNotFoundError:
@@ -37,7 +39,6 @@ def pathDiscovery(path: str) -> tuple[str, list[str] | None, Table]:
 def getData(path: str, userFiles: list[str]) -> list[DictConfig] | None:
     path, filteredFiles, table = pathDiscovery(path)
 
-    console = Console()
     console.print(Panel(table, expand=False, border_style="green"))
 
     if not userFiles:
@@ -63,6 +64,31 @@ def getData(path: str, userFiles: list[str]) -> list[DictConfig] | None:
             console.print(f"[bold yellow]WARNING:[/] File {filename} not found inside {path}")
 
     return files if files else None
+
+def getDataGranular(path: str, userFiles: list[str], iterator: int) -> DictConfig | None:
+    if not userFiles or iterator < 0 or iterator >= len(userFiles):
+        console.print(f"[bold red]ERROR:[/] {iterator} index is out of bounds.")
+        return None
+
+    targetFilename = userFiles[iterator]
+    fullPath = os.path.join(path, targetFilename)
+
+    try:
+        if not os.path.exists(fullPath):
+            console.print(f"[bold red]ERROR:[/] File not found in: {fullPath}")
+            return None
+
+        data = oc.load(fullPath)
+
+        if isinstance(data, DictConfig):
+            return data
+        else:
+            console.print(f"[bold red]ERROR:[/] the file {targetFilename} is not a DictConfig.")
+            return None
+
+    except Exception as e:
+        print(f"[bold red]CRITICAL:[/] error processing file {targetFilename}: {e}")
+        return None
 # ---------------- DESCOBERTA DE DADOS -- OS DADOS DEVEM SER EM FORMATO DE DICT. -- ------------------
 
 # ------------ MÓDULO DE DATA DISCOVERY. RETORNA UMA LISTA DE DictConfig CARREGADO PELO OMEGACONF. ----------

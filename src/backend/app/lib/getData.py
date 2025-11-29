@@ -1,5 +1,6 @@
-from typing import Dict, Any, cast
+from typing import cast
 
+from omegaconf import DictConfig
 from .dataDiscovery import getData
 
 type Value = str | list[str] | int | list[Value] | None
@@ -11,7 +12,7 @@ def granularGetList(key: str, path: str, userFiles: list[str], isDesc: bool) -> 
 
     keyData: list[Value] = []
     for data in dataList:
-        data = cast(Dict[str, Any], data)
+        data = cast(DictConfig, data)
         desc = data.get('description')
 
         current: Value = None
@@ -24,8 +25,3 @@ def granularGetList(key: str, path: str, userFiles: list[str], isDesc: bool) -> 
         keyData.append(current)
 
     return keyData if keyData else None
-
-# VERSÃO QUE EU RETORNO UMA LISTA:
-# descStringList = granularGet('descBody', path, userFiles, True)
-# descStringSpecific = descStringList[i]
-# (isso aqui é BEM MENOS IO bound)
