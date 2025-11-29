@@ -28,7 +28,7 @@ def pathDiscovery(path: str) -> tuple[str, list[str] | None, Table]:
 # ---------------- DESCOBERTA DE ARQUIVOS RELEVANTES ----------------------
 
 # ---------------- DESCOBERTA DE DADOS -- OS DADOS DEVEM SER EM FORMATO DE DICT. -- ------------------
-def getData(path) -> DictConfig | None:
+def getData(path: str) -> DictConfig | None:
     path, filteredFiles, table = pathDiscovery(path)
     console = Console()
     console.print(Panel(table, expand=False, border_style="green"))
@@ -50,6 +50,6 @@ def getData(path) -> DictConfig | None:
     return None
 # ---------------- DESCOBERTA DE DADOS -- OS DADOS DEVEM SER EM FORMATO DE DICT. -- ------------------
 
-def main(path) -> DictConfig | None:
+def main(path: str) -> DictConfig | None:
     data = getData(path)
     return data
