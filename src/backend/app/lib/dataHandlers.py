@@ -38,6 +38,7 @@ def handleStep(data: DictConfig, payload: dict[str, Any]) -> bool:
 # coisas a serem passadas: novo nome do editor para ser editado
 def handleDescEditor(data: DictConfig, payload: dict[str, Any]) -> bool:
     newEditor: str | None = payload.get('editor')
+
     desc: DictConfig = data.get('description')
 
     if not newEditor:
@@ -89,6 +90,8 @@ def handleBody(data: DictConfig, payload: dict[str, Any]) -> bool:
     data.body = content
     return True
 
+
+# coisas a serem passadas: uma lista de strings de tags novas
 def handleTags(data: DictConfig, payload: dict[str, Any]) -> bool:
     newTags: list[str] | None = payload.get('tags')
 
@@ -103,6 +106,8 @@ def handleTags(data: DictConfig, payload: dict[str, Any]) -> bool:
     data.tags.extend(newTags)
     return True
 
+
+# coisas a serem passadas: uma string única que indica a data que o processo vai expirar
 def handleExpire(data: DictConfig, payload: dict[str, Any]) -> bool:
     newDate: str | None = payload.get('expire_date')
     if not newDate:
@@ -113,12 +118,26 @@ def handleExpire(data: DictConfig, payload: dict[str, Any]) -> bool:
     return True
 
 
-# front end passa: handlers a serem tratados
-# iterador (número do kanban específico)
+# front end passa: iterador (número do kanban específico)
 # lista de arquivos do usuário específico
 # caminho absoluto para os dados do kanban
+
+# handlers a serem tratados
 # chaves requisitadas pelos handlers pedidos
 # dados são tratados para as novas versões deles, caso não existam, passam a existir
+#
+# EXISTEM 2 FORMAS DE PASSAR O PAYLOAD:
+# MANUAL:
+# 1: (..., "argumento"="variável", "argumento2"="variável2", ...)
+#
+# OU (modo bom)
+#
+# 2: dados={
+#           'argumento1': 'variável1',
+#           'argumento2': 'variável2',
+#            ...
+#            }
+# (actions, iterator, userFiles, path, **dados)
 def transformHandler(
     actions: list[Handlers],
     iterator: int,

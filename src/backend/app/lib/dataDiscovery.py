@@ -36,6 +36,7 @@ def pathDiscovery(path: str) -> tuple[str, list[str] | None, Table]:
 # ---------------- DESCOBERTA DE ARQUIVOS RELEVANTES ----------------------
 
 # ---------------- DESCOBERTA DE DADOS -- OS DADOS DEVEM SER EM FORMATO DE DICT. -- ------------------
+
 def getData(path: str, userFiles: list[str]) -> list[DictConfig] | None:
     path, filteredFiles, table = pathDiscovery(path)
 
@@ -67,7 +68,7 @@ def getData(path: str, userFiles: list[str]) -> list[DictConfig] | None:
 
 
 # ISSO AQUI FAZ O SEGUINTE:
-# front end passa: caminho da _pasta de arquivos_ de dados de kanban
+# front end passa: caminho absoluto (/home/sla/caminho/projeto/backend/app/dados) da _pasta de arquivos_ de dados de kanban
 # front end passa: _LISTA DE ARQUIVOS REFERENTES AO USUÁRIO_
 # front end passa: número específico do indice do kanban desejado
 # back end RECEBE: lista com apenas 1 ÚNICO dicionário para fazer handling de outras coisas do kanban
