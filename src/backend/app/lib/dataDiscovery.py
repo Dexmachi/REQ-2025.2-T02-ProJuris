@@ -10,16 +10,22 @@ import os
 
 # ---------------- DESCOBERTA DE ARQUIVOS RELEVANTES ----------------------
 def pathDiscovery(path: str) -> tuple[str, list[str] | None, Table]:
-
-    entries = os.listdir(path)
-    print(entries)
-    if entries:
-        filteredFiles = [e for e in entries if os.path.isfile(os.path.join(path, e)) and e.endswith(".yml")]
-    else:
-        filteredFiles = None
-
+    console = Console()
     table = Table(show_lines=True)
     table.add_column(f"Relevant files found in {path}")
+
+    fileType="json"
+    
+    try:
+        entries = os.listdir(path)
+    except FileNotFoundError:
+        console.print(f"[bold red]ERROR:[/] directory not found.")
+        return path, None, table
+    print(entries)
+    if entries:
+        filteredFiles = [e for e in entries if os.path.isfile(os.path.join(path, e)) and e.endswith(f".{fileType}")]
+    else:
+        filteredFiles = None
 
     if filteredFiles:
         for l in filteredFiles:
@@ -33,32 +39,30 @@ def getData(path: str, userFiles: list[str]) -> list[DictConfig] | None:
 
     console = Console()
     console.print(Panel(table, expand=False, border_style="green"))
-    data = console.input("Which of these files do you want to check? ")
 
     if not userFiles:
         return None
 
-    try:
-        files: list[DictConfig] = []
-        if filteredFiles:
-            for file in userFiles:
-                if file in userFiles and file in filteredFiles:
-                    data = oc.load(f"{path}/{data}")
-                    if not data:
-                        print (f"mano, vai fazer um dado")
-                        return None
-                    if isinstance(data, DictConfig):
-                        files.append(data)
-                        return files
-                    console.print(f"[bold red]ERROR:[/] data is not a OmegaConf dict: {path}/{data}")
-                    return None
-                console.print(f"[bold yellow]WARNING:[/] file {file} is not a acceptable file")
-    except FileNotFoundError:
-        console.print(f"[bold red]ERROR:[/] file not found at: {path}/{data}")
+    if not filteredFiles:
         return None
 
+    files: list[DictConfig] = []
+
+    for filename in userFiles:
+        if filename in filteredFiles:
+            full_path = os.path.join(path, filename)
+            try:
+                loaded_data = oc.load(full_path)
+                if isinstance(loaded_data, DictConfig):
+                    files.append(loaded_data)
+                else:
+                    console.print(f"[bold red]ERROR:[/] Data is not a OmegaConf dict: {full_path}")
+            except Exception as e:
+                console.print(f"[bold red]ERROR:[/] Could not read {filename}: {e}")
+        else:
+            console.print(f"[bold yellow]WARNING:[/] File {filename} not found inside {path}")
+
+    return files if files else None
 # ---------------- DESCOBERTA DE DADOS -- OS DADOS DEVEM SER EM FORMATO DE DICT. -- ------------------
 
-def main(path: str, userFiles: list[str]) -> list[DictConfig] | None:
-    data = getData(path, userFiles)
-    return data
+# ------------ MÓDULO DE DATA DISCOVERY. RETORNA UMA LISTA DE DictConfig CARREGADO PELO OMEGACONF. ----------
