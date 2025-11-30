@@ -751,3 +751,25 @@ body {
         grid-template-columns: 1fr;
     }
 }
+
+/* === CORES DAS COLUNAS DO FUNCIONÁRIO === */
+
+.status-novos {
+    background: #e8f3ff; /* azul clarinho */
+    border-left: 4px solid #7bb4ff; /* azul mais forte */
+}
+
+.status-andamento {
+    background: #f0f0f0; /* cinza claro */
+    border-left: 4px solid #bfbfbf; /* cinza médio para contraste */
+}
+
+.status-revisao {
+    background: var(--light-yellow);
+    border-left: 4px solid var(--yellow);
+}
+
+.status-concluido {
+    background: #e6fbe6;
+    border-left: 4px solid var(--green);
+}

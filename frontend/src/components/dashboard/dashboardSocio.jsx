@@ -1,15 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, Home, Folder, Users, TrendingUp, FileText, Plus, Settings, ChevronLeft, ChevronRight, Calendar, AlertTriangle, Clock, FolderOpen, Menu } from 'lucide-react';
+import {
+  Bell, Home, Folder, Users, TrendingUp, FileText, Plus, Settings,
+  ChevronLeft, ChevronRight, Calendar, AlertTriangle, Clock, FolderOpen,
+  Menu, List, CheckCircle, Eye
+} from 'lucide-react';
 import '../../style/dashboardSocio.css';
 
 const API_BASE_URL = 'http://localhost:5000/api';
 
 const DashboardSocio = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [currentStatsIndex, setCurrentStatsIndex] = useState(0);
   const [dados, setDados] = useState(null);
   const [loading, setLoading] = useState(true);
   const [draggedCard, setDraggedCard] = useState(null);
+
+  // Estados do modal — deixei antes de verDetalhes por clareza
+  const [modalOpen, setModalOpen] = useState(false);
+  const [demandaSelecionada, setDemandaSelecionada] = useState(null);
 
   const mockData = {
     user: {
@@ -58,11 +65,13 @@ const DashboardSocio = () => {
 
   useEffect(() => {
     loadDashboardData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadDashboardData = async () => {
     try {
       setLoading(true);
+      // Simulação de fetch — substitua pela chamada real se for o caso
       setDados(mockData);
       setLoading(false);
     } catch (error) {
@@ -70,6 +79,15 @@ const DashboardSocio = () => {
       setDados(mockData);
       setLoading(false);
     }
+  };
+
+  const getPrioridadeClass = (prioridade) => {
+    return prioridade?.toLowerCase() || 'normal';
+  };
+
+  const verDetalhes = (demanda) => {
+    setDemandaSelecionada(demanda);
+    setModalOpen(true);
   };
 
   const menuItems = [
@@ -116,14 +134,6 @@ const DashboardSocio = () => {
     }
   ] : [];
 
-  const navigateStats = (direction) => {
-    if (direction === 'prev' && currentStatsIndex > 0) {
-      setCurrentStatsIndex(currentStatsIndex - 1);
-    } else if (direction === 'next' && currentStatsIndex < statsData.length - 2) {
-      setCurrentStatsIndex(currentStatsIndex + 1);
-    }
-  };
-
   const handleDragStart = (e, demanda, status) => {
     setDraggedCard({ demanda, status });
     e.currentTarget.style.opacity = '0.5';
@@ -137,30 +147,35 @@ const DashboardSocio = () => {
     e.preventDefault();
   };
 
-  const handleDrop = async (e, novoStatus) => {
-    e.preventDefault();
-    
-    if (!draggedCard) return;
+const handleDrop = (e, novoStatus) => {
+  e.preventDefault();
 
-    const { demanda, status: statusAntigo } = draggedCard;
+  if (!draggedCard) return;
 
-    setDados(prev => {
-      const newDados = { ...prev };
-      const statusKey = getStatusKey(statusAntigo);
-      const novoStatusKey = getStatusKey(novoStatus);
-      
-      newDados.kanban[statusKey] = newDados.kanban[statusKey].filter(
+  const { demanda, status: statusAntigo } = draggedCard;
+
+  setDados(prev => {
+    const newDados = { ...prev };
+
+    const statusKey = getStatusKey(statusAntigo);
+    const novoStatusKey = getStatusKey(novoStatus);
+
+    // REMOVE em qualquer caso (prevenir duplicação)
+    Object.keys(newDados.kanban).forEach(col => {
+      newDados.kanban[col] = newDados.kanban[col].filter(
         d => d.id !== demanda.id
       );
-      
-      newDados.kanban[novoStatusKey].push(demanda);
-      
-      return newDados;
     });
 
-    setDraggedCard(null);
-    alert('Demanda movida com sucesso!');
-  };
+    // ADICIONA à nova coluna
+    newDados.kanban[novoStatusKey].push(demanda);
+
+    return newDados;
+  });
+
+  setDraggedCard(null);
+};
+
 
   const getStatusKey = (status) => {
     const map = {
@@ -175,7 +190,7 @@ const DashboardSocio = () => {
   if (loading) {
     return (
       <div className="loading-container">
-        <div className="loading-spinner"></div>
+        <div className="loading-spinner" />
         <p>Carregando...</p>
       </div>
     );
@@ -200,10 +215,7 @@ const DashboardSocio = () => {
             {menuItems.map((item, index) => {
               const Icon = item.icon;
               return (
-                <li
-                  key={index}
-                  className={item.active ? 'active' : ''}
-                >
+                <li key={index} className={item.active ? 'active' : ''}>
                   <Icon size={20} />
                   {!sidebarCollapsed && <span>{item.label}</span>}
                 </li>
@@ -230,55 +242,27 @@ const DashboardSocio = () => {
           </div>
         </header>
 
-        {/* Stats Carousel */}
-        <div className="stats-carousel-wrapper">
-          <div className="stats-carousel-container">
-            <button
-              onClick={() => navigateStats('prev')}
-              disabled={currentStatsIndex === 0}
-              className="carousel-btn"
-            >
-              <ChevronLeft size={20} />
-            </button>
-
-            <div className="stats-carousel">
-              <div
-                className="stats-grid"
-                style={{ transform: `translateX(-${currentStatsIndex * 51.5}%)` }}
-              >
-                {statsData.map((stat, index) => {
-                  const Icon = stat.icon;
-                  return (
-                    <div
-                      key={index}
-                      className={`stat-card ${stat.critical ? 'critical' : ''}`}
-                    >
-                      <div className={`stat-icon ${stat.color}`}>
-                        <Icon size={24} />
-                      </div>
-                      <div className="stat-content">
-                        <h3>{stat.title}</h3>
-                        <p className="stat-value">{stat.value}</p>
-                        {stat.change && (
-                          <p className={`stat-change ${stat.positive ? 'positive' : 'negative'}`}>
-                            {stat.change}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
+        {/* Stats */}
+        <div className="stats-grid">
+          {statsData.map((stat, index) => {
+            const Icon = stat.icon;
+            return (
+              <div key={index} className={`stat-card ${stat.critical ? 'critical' : ''}`}>
+                <div className={`stat-icon ${stat.color}`}>
+                  <Icon size={24} />
+                </div>
+                <div className="stat-content">
+                  <h3>{stat.title}</h3>
+                  <p className="stat-value">{stat.value}</p>
+                  {stat.change && (
+                    <p className={`stat-change ${stat.positive ? 'positive' : 'negative'}`}>
+                      {stat.change}
+                    </p>
+                  )}
+                </div>
               </div>
-            </div>
-
-            <button
-              onClick={() => navigateStats('next')}
-              disabled={currentStatsIndex >= statsData.length - 2}
-              className="carousel-btn"
-            >
-              <ChevronRight size={20} />
-            </button>
-          </div>
+            );
+          })}
         </div>
 
         {/* Kanban Board */}
@@ -298,11 +282,20 @@ const DashboardSocio = () => {
                 aguardando: 'Aguardando',
                 concluidos: 'Concluídos'
               };
-              
+
               return (
-                <div key={status} className="kanban-column">
+                <div
+                  key={status}
+                  className={`kanban-column ${status === 'aguardando' ? 'revision' : ''} ${status === 'concluidos' ? 'success' : ''}`}
+                >
                   <div className="column-header">
-                    <h3>{statusLabels[status]}</h3>
+                    <h3>
+                      {status === 'novos' && <List size={16} />}
+                      {status === 'em_andamento' && <Clock size={16} />}
+                      {status === 'aguardando' && <Clock size={16} />}
+                      {status === 'concluidos' && <CheckCircle size={16} />}
+                      {statusLabels[status]}
+                    </h3>
                     <span className="count">{demandas.length}</span>
                   </div>
 
@@ -319,10 +312,28 @@ const DashboardSocio = () => {
                         onDragEnd={handleDragEnd}
                         className="kanban-card"
                       >
-                        <p className="processo-id">{demanda.id}</p>
-                        <div className="card-meta">
-                          <Calendar size={14} />
-                          <span>{demanda.prazo}</span>
+                        <div className="card-header">
+                          <span className="processo-id">{demanda.id}</span>
+                          <span className={`priority-badge ${getPrioridadeClass(demanda.prioridade)}`}>
+                            {demanda.prioridade || 'normal'}
+                          </span>
+                        </div>
+
+                        <h4 className="card-title">{demanda.titulo || `Processo ${demanda.id}`}</h4>
+                        <p className="card-description">{demanda.descricao || 'Demanda em andamento'}</p>
+
+                        <div className="card-footer">
+                          <div className="card-meta">
+                            <Calendar size={14} />
+                            <span>{demanda.prazo}</span>
+                          </div>
+                          <button
+                            onClick={() => verDetalhes(demanda)}
+                            className="btn-icon"
+                            title="Ver detalhes"
+                          >
+                            <Eye size={16} />
+                          </button>
                         </div>
                       </div>
                     ))}

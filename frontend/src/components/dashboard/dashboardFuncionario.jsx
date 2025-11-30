@@ -123,12 +123,13 @@ const DashboardFuncionario = () => {
 
   const handleDrop = async (e, novoStatus) => {
     e.preventDefault();
-    
+
     if (!draggedCard) return;
 
     const { demanda, status: statusAntigo } = draggedCard;
+    const novoStatusKey = getStatusKey(novoStatus);
 
-    // VALIDAÇÕES DE REGRAS DE NEGÓCIO
+    // Regras de negócio
     if (demanda.responsavelId !== userId) {
       alert('❌ Você só pode mover demandas atribuídas a você!');
       return;
@@ -144,23 +145,27 @@ const DashboardFuncionario = () => {
       return;
     }
 
-    // Mover demanda
+    // Mover demanda SEM DUPLICAR
     setDados(prev => {
       const newDados = { ...prev };
-      
-      newDados.demandas[statusAntigo] = newDados.demandas[statusAntigo].filter(
-        d => d.id !== demanda.id
-      );
-      
-      newDados.demandas[novoStatus].push(demanda);
-      
+
+      // 1. Remove de TODAS as colunas (evita duplicação)
+      Object.keys(newDados.demandas).forEach(col => {
+        newDados.demandas[col] = newDados.demandas[col].filter(
+          d => d.id !== demanda.id
+        );
+      });
+
+      // 2. Adiciona só na coluna destino
+      newDados.demandas[novoStatusKey].push(demanda);
+
       return newDados;
     });
 
     setDraggedCard(null);
 
     if (novoStatus === 'aguardando_revisao') {
-      alert('✅ Demanda enviada para revisão do sócio!');
+      alert('✅ Demanda enviada para revisão!');
     } else {
       alert('✅ Demanda movida com sucesso!');
     }
@@ -204,6 +209,17 @@ const DashboardFuncionario = () => {
     };
     return labels[status] || status;
   };
+
+  const getStatusKey = (status) => {
+  const map = {
+    'Novos': 'novos',
+    'Em Andamento': 'em_andamento',
+    'Aguardando': 'aguardando',
+    'Concluídos': 'concluidos'
+  };
+  return map[status] || status;
+};
+
 
   if (loading) {
     return (
@@ -315,8 +331,12 @@ const DashboardFuncionario = () => {
             {Object.entries(dados?.demandas || {}).map(([status, demandas]) => (
               <div
                 key={status}
-                className={`kanban-column ${status === 'aguardando_revisao' ? 'revision' : ''} ${status === 'concluidas' ? 'success' : ''}`}
-              >
+                className={`kanban-column 
+                 ${status === "novas" ? "status-novos" : ""}
+                 ${status === "em_andamento" ? "status-andamento" : ""}
+                 ${status === "aguardando_revisao" ? "status-revisao" : ""}
+                 ${status === "concluidas" ? "status-concluido" : ""}
+              `}>
                 <div className="column-header">
                   <h3>
                     {status === 'novas' && <List size={16} />}
