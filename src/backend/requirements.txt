@@ -3,5 +3,7 @@ Flask-SQLAlchemy
 Flask-Migrate
 Flask-Login
 Flask-Bcrypt
+Flask-CORS
+PyJWT
 python-dotenv
 PyYAML

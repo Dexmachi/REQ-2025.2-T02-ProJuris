@@ -1,0 +1,11 @@
+{
+  "id": 1,
+  "nome": "Dr. Fausto Correia",
+  "email": "fausto@legispro.com",
+  "telefone": "(11) 98765-4321",
+  "cpf": "123.456.789-00",
+  "oab": "OAB/SP 123456",
+  "role": "socio",
+  "criado_em": "2025-11-30T21:03:14.037176",
+  "atualizado_em": "2025-11-30T21:03:14.037191"
+}

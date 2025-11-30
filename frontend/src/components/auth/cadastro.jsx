@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/authContext';
 import '../../style/cadastro.css';
 
 const Cadastro = () => {
@@ -18,6 +19,7 @@ const Cadastro = () => {
   const [loading, setLoading] = useState(false);
   
   const navigate = useNavigate();
+  const { register } = useAuth();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -45,32 +47,20 @@ const Cadastro = () => {
     setLoading(true);
 
     try {
-      // Aqui você fará a chamada para a API de cadastro
-      const response = await fetch('http://localhost:5000/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          nome: formData.nome,
-          email: formData.email,
-          senha: formData.senha,
-          telefone: formData.telefone,
-          cpf: formData.cpf,
-          oab: formData.oab,
-          role: formData.role
-        }),
+      await register({
+        nome: formData.nome,
+        email: formData.email,
+        senha: formData.senha,
+        telefone: formData.telefone,
+        cpf: formData.cpf,
+        oab: formData.oab,
+        role: formData.role
       });
-
-      if (response.ok) {
-        alert('Cadastro realizado com sucesso!');
-        navigate('/login');
-      } else {
-        const data = await response.json();
-        setError(data.message || 'Erro ao realizar cadastro');
-      }
+      
+      alert('Cadastro realizado com sucesso!');
+      navigate('/login');
     } catch (err) {
-      setError('Erro ao conectar com o servidor');
+      setError(err.message || 'Erro ao realizar cadastro');
       console.error('Erro:', err);
     } finally {
       setLoading(false);

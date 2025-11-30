@@ -1,0 +1,11 @@
+{
+  "id": 5,
+  "nome": "Lucas Ricarte",
+  "email": "exemplo@exemplo.com",
+  "telefone": "(11)11111-1111",
+  "cpf": "222.222.222-22",
+  "oab": "",
+  "role": "funcionario",
+  "criado_em": "2025-11-30T21:41:20.151816",
+  "atualizado_em": "2025-11-30T21:41:20.151829"
+}

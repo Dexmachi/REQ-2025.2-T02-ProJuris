@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider } from './context/authContext';
 import Login from './components/auth/login';
 import Cadastro from './components/auth/cadastro';
 import PrivateRoute from './components/auth/privateRoute';

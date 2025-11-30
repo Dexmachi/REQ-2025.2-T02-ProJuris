@@ -5,6 +5,7 @@ import {
   Menu, List, CheckCircle, Eye
 } from 'lucide-react';
 import '../../style/dashboardSocio.css';
+import CadastrarDemanda from './CadastrarDemanda';
 
 const API_BASE_URL = 'http://localhost:5000/api';
 
@@ -17,6 +18,7 @@ const DashboardSocio = () => {
   // Estados do modal — deixei antes de verDetalhes por clareza
   const [modalOpen, setModalOpen] = useState(false);
   const [demandaSelecionada, setDemandaSelecionada] = useState(null);
+  const [isCreatingDemanda, setIsCreatingDemanda] = useState(false);
 
   const mockData = {
     user: {
@@ -79,6 +81,35 @@ const DashboardSocio = () => {
       setDados(mockData);
       setLoading(false);
     }
+  };
+
+  // ADIÇÃO 3: Função para lidar com o sucesso do cadastro de demanda (RF01)
+  const handleDemandaCriada = (novaDemandaBackend) => {
+    // Mapeia o objeto recebido do backend para o formato usado no mockData do frontend
+    const dataPrazo = new Date(novaDemandaBackend.data_prazo);
+    const prazoFormatado = `${dataPrazo.getDate().toString().padStart(2, '0')}/${(dataPrazo.getMonth() + 1).toString().padStart(2, '0')}/${dataPrazo.getFullYear()}`;
+    
+    // Cria um objeto compatível com os cartões Kanban existentes no mock
+    const novaDemandaFrontend = {
+      id: `DEM-${Math.floor(Math.random() * 1000)}`, // ID temporário compatível com o mock
+      titulo: novaDemandaBackend.titulo,
+      descricao: novaDemandaBackend.descricao,
+      prazo: prazoFormatado,
+      responsavel: novaDemandaBackend.responsavel_email, // Obtido da resposta do backend
+      prioridade: 'normal'
+    };
+
+    setDados(prev => {
+      if (!prev) return prev; 
+      
+      const newDados = { ...prev };
+      // Adiciona a nova demanda à primeira coluna do Kanban: 'novos'
+      newDados.kanban.novos.unshift(novaDemandaFrontend); 
+      
+      return newDados;
+    });
+
+    setIsCreatingDemanda(false); // Fecha o formulário
   };
 
   const getPrioridadeClass = (prioridade) => {
@@ -368,7 +399,10 @@ const handleDrop = (e, novoStatus) => {
           <div className="quick-actions">
             <h2>Ações Rápidas</h2>
             <div className="actions-list">
-              <button className="action-btn primary">
+              <button 
+                  className="action-btn primary"
+                  onClick={() => setIsCreatingDemanda(true)} // Abre o modal
+              >
                 <Plus size={24} />
                 <div>
                   <strong>Novo Processo</strong>
@@ -379,8 +413,33 @@ const handleDrop = (e, novoStatus) => {
           </div>
         </div>
       </main>
+
+      {/* ADIÇÃO 5: Modal/Componente para Cadastro de Demanda (RF01) */}
+      {/* Exibe o formulário de cadastro em um modal quando isCreatingDemanda é true */}
+      {isCreatingDemanda && (
+        <div className="modal-overlay" onClick={() => setIsCreatingDemanda(false)}>
+            <div className="modal-content large" onClick={e => e.stopPropagation()}>
+                <button className="close-btn" onClick={() => setIsCreatingDemanda(false)}>X</button>
+                <CadastrarDemanda 
+                    onDemandaCriada={handleDemandaCriada} // Passa a função de callback
+                    onCancel={() => setIsCreatingDemanda(false)} // Permite fechar pelo componente
+                />
+            </div>
+        </div>
+      )}
+      {/* Fim ADIÇÃO 5 */}
+
+      {modalOpen && (
+        <div className="modal-overlay" onClick={() => setModalOpen(false)}>
+          {/* Conteúdo do Modal de Detalhes da Demanda Selecionada */}
+        </div>
+      )}
+
+      
     </div>
   );
 };
+
+
 
 export default DashboardSocio;
