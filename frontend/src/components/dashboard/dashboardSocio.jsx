@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import {
   Bell, Home, Folder, Users, TrendingUp, FileText, Plus, Settings,
   ChevronLeft, ChevronRight, Calendar, AlertTriangle, Clock, FolderOpen,
-  Menu, List, CheckCircle, Eye
+  Menu, List, CheckCircle, Eye, Edit
 } from 'lucide-react';
 import '../../style/dashboardSocio.css';
 import CadastrarDemanda from './CadastrarDemanda';
+import EditarDemanda from './EditarDemanda';
 
 const API_BASE_URL = 'http://localhost:5000/api';
 
@@ -19,6 +20,7 @@ const DashboardSocio = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [demandaSelecionada, setDemandaSelecionada] = useState(null);
   const [isCreatingDemanda, setIsCreatingDemanda] = useState(false);
+  const [isEditingDemanda, setIsEditingDemanda] = useState(false);
 
   const mockData = {
     user: {
@@ -118,7 +120,45 @@ const DashboardSocio = () => {
 
   const verDetalhes = (demanda) => {
     setDemandaSelecionada(demanda);
+    setIsEditingDemanda(false);
     setModalOpen(true);
+  };
+
+  const handleEditarDemanda = () => {
+    setIsEditingDemanda(true);
+  };
+
+  const handleDemandaAtualizada = (demandaAtualizada) => {
+    // Atualiza a demanda no estado local
+    setDados(prev => {
+      if (!prev) return prev;
+      
+      const newDados = { ...prev };
+      
+      // Procura e atualiza a demanda em todas as colunas do kanban
+      Object.keys(newDados.kanban).forEach(coluna => {
+        const index = newDados.kanban[coluna].findIndex(d => d.id === demandaAtualizada.id);
+        if (index !== -1) {
+          // Converte data do backend para formato brasileiro
+          const dataPrazo = new Date(demandaAtualizada.data_prazo);
+          const prazoFormatado = `${dataPrazo.getDate().toString().padStart(2, '0')}/${(dataPrazo.getMonth() + 1).toString().padStart(2, '0')}/${dataPrazo.getFullYear()}`;
+          
+          newDados.kanban[coluna][index] = {
+            ...newDados.kanban[coluna][index],
+            titulo: demandaAtualizada.titulo,
+            descricao: demandaAtualizada.descricao,
+            prazo: prazoFormatado,
+            status: demandaAtualizada.status
+          };
+        }
+      });
+      
+      return newDados;
+    });
+    
+    setIsEditingDemanda(false);
+    setModalOpen(false);
+    alert('✅ Demanda atualizada com sucesso!');
   };
 
   const menuItems = [
@@ -429,9 +469,73 @@ const handleDrop = (e, novoStatus) => {
       )}
       {/* Fim ADIÇÃO 5 */}
 
-      {modalOpen && (
+      {modalOpen && demandaSelecionada && (
         <div className="modal-overlay" onClick={() => setModalOpen(false)}>
-          {/* Conteúdo do Modal de Detalhes da Demanda Selecionada */}
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>{isEditingDemanda ? 'Editar Demanda' : 'Detalhes da Demanda'}</h2>
+              <button className="close-btn" onClick={() => { setModalOpen(false); setIsEditingDemanda(false); }}>×</button>
+            </div>
+            
+            {isEditingDemanda ? (
+              <div className="modal-body">
+                <EditarDemanda
+                  demanda={demandaSelecionada}
+                  onDemandaAtualizada={handleDemandaAtualizada}
+                  onCancel={() => setIsEditingDemanda(false)}
+                />
+              </div>
+            ) : (
+              <>
+                <div className="modal-body">
+                  <div className="detail-row">
+                    <strong>ID:</strong>
+                    <span>{demandaSelecionada.id}</span>
+                  </div>
+                  
+                  <div className="detail-row">
+                    <strong>Título:</strong>
+                    <span>{demandaSelecionada.titulo || `Processo ${demandaSelecionada.id}`}</span>
+                  </div>
+                  
+                  <div className="detail-row">
+                    <strong>Descrição:</strong>
+                    <span>{demandaSelecionada.descricao || 'Sem descrição'}</span>
+                  </div>
+                  
+                  <div className="detail-row">
+                    <strong>Prazo:</strong>
+                    <span className="prazo-destaque">
+                      <Calendar size={16} />
+                      {demandaSelecionada.prazo}
+                    </span>
+                  </div>
+                  
+                  <div className="detail-row">
+                    <strong>Responsável:</strong>
+                    <span>{demandaSelecionada.responsavel}</span>
+                  </div>
+                  
+                  <div className="detail-row">
+                    <strong>Prioridade:</strong>
+                    <span className={`priority-badge ${getPrioridadeClass(demandaSelecionada.prioridade)}`}>
+                      {demandaSelecionada.prioridade || 'normal'}
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="modal-footer">
+                  <button className="btn-secondary" onClick={() => setModalOpen(false)}>
+                    Fechar
+                  </button>
+                  <button className="btn-primary" onClick={handleEditarDemanda}>
+                    <Edit size={18} />
+                    Editar
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
 

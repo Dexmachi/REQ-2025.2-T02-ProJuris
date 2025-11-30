@@ -773,3 +773,159 @@ body {
     background: #e6fbe6;
     border-left: 4px solid var(--green);
 }
+
+/* ==================== ESTILOS DO MODAL (compatível com sócio) ==================== */
+.detail-row {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 1.5rem;
+    gap: 1rem;
+}
+
+.detail-row:last-child {
+    margin-bottom: 0;
+}
+
+.detail-row strong {
+    min-width: 120px;
+    color: var(--gray-600);
+    font-weight: 600;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.detail-row span {
+    flex: 1;
+    color: var(--gray-800);
+    font-size: 1rem;
+}
+
+.prazo-destaque {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--primary-blue) !important;
+    font-weight: 600;
+}
+
+.modal-footer {
+    padding: 1.5rem 2rem;
+    border-top: 1px solid var(--gray-200);
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+}
+
+.btn-primary {
+    background-color: var(--primary-blue, #1e3a8a);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-primary:hover {
+    background-color: #1e40af;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.btn-secondary {
+    background-color: white;
+    color: var(--gray-600, #4b5563);
+    border: 1px solid var(--gray-200, #e5e7eb);
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-secondary:hover {
+    background-color: var(--gray-50, #f9fafb);
+    border-color: var(--gray-300, #d1d5db);
+}
+
+/* ==================== FORMULÁRIO DE EDIÇÃO ==================== */
+.editar-demanda-container {
+    width: 100%;
+}
+
+.editar-demanda-container .form-group {
+    margin-bottom: 1.5rem;
+}
+
+.editar-demanda-container label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: var(--gray-600, #4b5563);
+    font-weight: 600;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.editar-demanda-container input,
+.editar-demanda-container textarea,
+.editar-demanda-container select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--gray-200, #e5e7eb);
+    border-radius: 8px;
+    font-size: 1rem;
+    color: var(--gray-800, #1f2937);
+    transition: all 0.2s;
+}
+
+.editar-demanda-container input:focus,
+.editar-demanda-container textarea:focus,
+.editar-demanda-container select:focus {
+    outline: none;
+    border-color: var(--primary-blue, #1e3a8a);
+    box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
+}
+
+.editar-demanda-container textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+.editar-demanda-container .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.editar-demanda-container .error-message {
+    background-color: #fee2e2;
+    color: #ef4444;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    font-size: 0.875rem;
+}
+
+.editar-demanda-container .form-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    margin-top: 1.5rem;
+}
+
+@media (max-width: 768px) {
+    .editar-demanda-container .form-row {
+        grid-template-columns: 1fr;
+    }
+}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, CheckCircle, Clock, Calendar, AlertTriangle, List, Eye, Send, MessageSquare, Menu, User } from 'lucide-react';
+import { Bell, CheckCircle, Clock, Calendar, AlertTriangle, List, Eye, Send, MessageSquare, Menu, User, Edit } from 'lucide-react';
 import '../../style/dashboardFuncionario.css';
+import EditarDemanda from './EditarDemanda';
 
 const API_BASE_URL = 'http://localhost:5000/api';
 
@@ -11,6 +12,7 @@ const DashboardFuncionario = () => {
   const [draggedCard, setDraggedCard] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [demandaSelecionada, setDemandaSelecionada] = useState(null);
+  const [isEditingDemanda, setIsEditingDemanda] = useState(false);
   const [userId] = useState('123');
 
   const mockData = {
@@ -173,7 +175,44 @@ const DashboardFuncionario = () => {
 
   const verDetalhes = (demanda) => {
     setDemandaSelecionada(demanda);
+    setIsEditingDemanda(false);
     setModalOpen(true);
+  };
+
+  const handleEditarDemanda = () => {
+    setIsEditingDemanda(true);
+  };
+
+  const handleDemandaAtualizada = (demandaAtualizada) => {
+    // Atualiza a demanda no estado local
+    setDados(prev => {
+      if (!prev) return prev;
+      
+      const newDados = { ...prev };
+      
+      // Procura e atualiza a demanda em todas as colunas
+      Object.keys(newDados.demandas).forEach(coluna => {
+        const index = newDados.demandas[coluna].findIndex(d => d.id === demandaAtualizada.id);
+        if (index !== -1) {
+          const dataPrazo = new Date(demandaAtualizada.data_prazo);
+          const prazoFormatado = `${dataPrazo.getDate().toString().padStart(2, '0')}/${(dataPrazo.getMonth() + 1).toString().padStart(2, '0')}/${dataPrazo.getFullYear()}`;
+          
+          newDados.demandas[coluna][index] = {
+            ...newDados.demandas[coluna][index],
+            titulo: demandaAtualizada.titulo,
+            descricao: demandaAtualizada.descricao,
+            prazo: prazoFormatado,
+            status: demandaAtualizada.status
+          };
+        }
+      });
+      
+      return newDados;
+    });
+    
+    setIsEditingDemanda(false);
+    setModalOpen(false);
+    alert('✅ Demanda atualizada com sucesso!');
   };
 
   const solicitarRevisao = () => {
@@ -421,38 +460,74 @@ const DashboardFuncionario = () => {
         <div className="modal-overlay" onClick={() => setModalOpen(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>{demandaSelecionada.id} - Detalhes</h2>
-              <button onClick={() => setModalOpen(false)} className="btn-close">
+              <h2>{isEditingDemanda ? 'Editar Demanda' : 'Detalhes da Demanda'}</h2>
+              <button onClick={() => { setModalOpen(false); setIsEditingDemanda(false); }} className="btn-close">
                 ✕
               </button>
             </div>
             
-            <div className="modal-body">
-              <h3>{demandaSelecionada.titulo}</h3>
-              <p className="modal-description">{demandaSelecionada.descricao}</p>
-              
-              <div className="detail-grid">
-                <div className="detail-item">
-                  <label>Prazo</label>
-                  <p>{demandaSelecionada.prazo}</p>
-                </div>
-                <div className="detail-item">
-                  <label>Prioridade</label>
-                  <p>{demandaSelecionada.prioridade}</p>
-                </div>
+            {isEditingDemanda ? (
+              <div className="modal-body">
+                <EditarDemanda
+                  demanda={demandaSelecionada}
+                  onDemandaAtualizada={handleDemandaAtualizada}
+                  onCancel={() => setIsEditingDemanda(false)}
+                />
               </div>
+            ) : (
+              <>
+                <div className="modal-body">
+                  <div className="detail-row">
+                    <strong>ID:</strong>
+                    <span>{demandaSelecionada.id}</span>
+                  </div>
+                  
+                  <div className="detail-row">
+                    <strong>Título:</strong>
+                    <span>{demandaSelecionada.titulo}</span>
+                  </div>
+                  
+                  <div className="detail-row">
+                    <strong>Descrição:</strong>
+                    <span>{demandaSelecionada.descricao || 'Sem descrição'}</span>
+                  </div>
+                  
+                  <div className="detail-row">
+                    <strong>Prazo:</strong>
+                    <span className="prazo-destaque">
+                      <Calendar size={16} />
+                      {demandaSelecionada.prazo}
+                    </span>
+                  </div>
+                  
+                  <div className="detail-row">
+                    <strong>Prioridade:</strong>
+                    <span className={`priority-badge ${demandaSelecionada.prioridade}`}>
+                      {demandaSelecionada.prioridade}
+                    </span>
+                  </div>
+                  
+                  <div className="detail-row">
+                    <strong>Atribuído por:</strong>
+                    <span>{demandaSelecionada.atribuidoPor}</span>
+                  </div>
+                </div>
 
-              <div className="modal-actions">
-                <button onClick={solicitarRevisao} className="btn-primary">
-                  <Send size={20} />
-                  Solicitar Revisão
-                </button>
-                <button className="btn-secondary">
-                  <MessageSquare size={20} />
-                  Comentar
-                </button>
-              </div>
-            </div>
+                <div className="modal-footer">
+                  <button onClick={() => setModalOpen(false)} className="btn-secondary">
+                    Fechar
+                  </button>
+                  <button onClick={handleEditarDemanda} className="btn-primary">
+                    <Edit size={18} />
+                    Editar
+                  </button>
+                  <button onClick={solicitarRevisao} className="btn-primary">
+                    <Send size={18} />
+                    Solicitar Revisão
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
