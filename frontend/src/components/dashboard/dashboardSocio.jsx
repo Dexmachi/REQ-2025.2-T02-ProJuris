@@ -356,9 +356,10 @@ const handleDrop = (e, novoStatus) => {
 
               return (
                 <div
-                  key={status}
-                  className={`kanban-column ${status === 'aguardando' ? 'revision' : ''} ${status === 'concluidos' ? 'success' : ''}`}
-                >
+  key={status}
+  className={`kanban-column kanban-${status}`}
+>
+                
                   <div className="column-header">
                     <h3>
                       {status === 'novos' && <List size={16} />}

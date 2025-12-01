@@ -968,3 +968,22 @@
         grid-template-columns: 1fr;
     }
 }
+.kanban-novos {
+    background: #e8f3ff !important;
+    border-left: 4px solid #7bb4ff !important;
+}
+
+.kanban-em_andamento {
+    background: #f0f0f0 !important;
+    border-left: 4px solid #bfbfbf !important;
+}
+
+.kanban-aguardando {
+    background: #fef3c7 !important;
+    border-left: 4px solid #f59e0b !important;
+}
+
+.kanban-concluidos {
+    background: #e6fbe6 !important;
+    border-left: 4px solid #10b981 !important;
+}
