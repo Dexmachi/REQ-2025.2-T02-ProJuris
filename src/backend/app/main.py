@@ -138,6 +138,36 @@ def update_demanda(current_user, demanda_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'message': f'Erro ao atualizar demanda: {str(e)}'}), 500
+    
+# Rota para atualização rápida de status (Kanban) ---
+@bp.route('/demandas/<int:demanda_id>/status', methods=['PATCH'])
+@token_required
+def patch_demanda_status(current_user, demanda_id):
+    # 1. Busca a demanda
+    demanda = Demanda.query.get(demanda_id)
+    if not demanda:
+        return jsonify({'message': 'Demanda não encontrada.'}), 404
+    
+    # 2. Verifica permissão (Sócio pode alterar todas; Funcionário só pode alterar as suas)
+    if current_user.role != 'socio' and demanda.responsavel_id != current_user.id:
+        return jsonify({'message': 'Você não tem permissão para alterar o status desta demanda.'}), 403
+    
+    data = request.get_json()
+    novo_status = data.get('status')
+    
+    if not novo_status:
+        return jsonify({'message': 'Novo status não fornecido.'}), 400
+        
+    # 3. Atualiza apenas o status
+    demanda.status = novo_status
+    
+    # 4. Salva no banco de dados
+    try:
+        db.session.commit()
+        return jsonify({'message': 'Status atualizado com sucesso!', 'demanda': demanda.to_dict()}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': f'Erro ao atualizar status: {str(e)}'}), 500
 
 # Rota Obter Demanda por ID ---
 @bp.route('/demandas/<int:demanda_id>', methods=['GET'])

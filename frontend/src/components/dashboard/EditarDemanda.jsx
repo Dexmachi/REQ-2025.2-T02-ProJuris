@@ -1,20 +1,35 @@
 import React, { useState, useEffect } from 'react';
-import { Save, X } from 'lucide-react'; // Ícones lucide-react
-// Importamos a API (para /usuarios) e a demandasAPI (para update)
+import { Save, X } from 'lucide-react'; 
 import api, { demandasAPI } from '../../services/api'; 
 
-const EditarDemanda = ({ demanda, onDemandaAtualizada, onCancel }) => {
-  // Estado inicial que precisa garantir o ID do responsável e o status
+function EditarDemanda({ demanda, onDemandaAtualizada, onCancel }) {
+  
+  // Função auxiliar para converter DD/MM/YYYY para o formato que o input espera
+  const formatBackendDate = (dateString) => {
+    if (!dateString) return '';
+    try {
+      // Cria um objeto Date a partir da string ISO do backend
+      const date = new Date(dateString);
+      // Retorna no formato YYYY-MM-DDThh:mm, necessário para datetime-local
+      return date.toISOString().slice(0, 16); 
+    } catch (e) {
+      console.error("Erro ao formatar data:", e);
+      return '';
+    }
+  };
+
+
   const [formData, setFormData] = useState({
     titulo: demanda.titulo || '',
     descricao: demanda.descricao || '',
     // Tenta formatar a data que vem do backend (ISO) para o formato HTML datetime-local (YYYY-MM-DDThh:mm)
-    data_prazo: demanda.data_prazo ? new Date(demanda.data_prazo).toISOString().slice(0, 16) : '',
+    data_prazo: formatBackendDate(demanda.data_prazo),
     status: demanda.status || 'Elaboração',
-    prioridade: demanda.prioridade || 'normal', // Mantém a prioridade para consistência da UI
-    responsavel_id: demanda.responsavel_id || '', // RF05: ID do responsável atual
+    prioridade: demanda.prioridade || 'normal', 
+    responsavel_id: demanda.responsavel_id || '', 
   });
 
+  
   const [usuarios, setUsuarios] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -25,12 +40,12 @@ const EditarDemanda = ({ demanda, onDemandaAtualizada, onCancel }) => {
     api.get('/usuarios')
       .then(response => {
         setUsuarios(response.data);
-        // Tenta pré-selecionar o responsável atual
+        // Tenta pre-selecionar o responsável atual
         const responsavelAtual = response.data.find(u => u.id === demanda.responsavel_id);
         if (responsavelAtual) {
             setFormData(prev => ({ ...prev, responsavel_id: responsavelAtual.id }));
         } else {
-             // Mantém o ID original se o usuário não for encontrado na lista (caso o fetch falhe)
+             // Mantém o ID original se o usuário não for encontrado na lista
              setFormData(prev => ({ ...prev, responsavel_id: demanda.responsavel_id }));
         }
       })
@@ -61,7 +76,7 @@ const EditarDemanda = ({ demanda, onDemandaAtualizada, onCancel }) => {
     }
     
     // Converte a data do formato datetime-local para o formato ISO 8601 que o backend espera
-    const data_prazo_iso = new Date(formData.data_prazo).toISOString();
+    const data_prazo_iso = formData.data_prazo ? new Date(formData.data_prazo).toISOString() : null;
 
     try {
       // Prepara os dados para enviar ao backend
@@ -84,17 +99,17 @@ const EditarDemanda = ({ demanda, onDemandaAtualizada, onCancel }) => {
     } catch (err) {
       console.error('❌ Erro ao atualizar demanda:', err.response?.data || err);
       // Exibe a mensagem de erro do backend (incluindo erros de permissão RF04)
-      setError(err.response?.data?.message || 'Erro ao atualizar a demanda. Verifique os dados.');
+      setError(err.response?.data?.message || 'Falha ao atualizar demanda. Verifique os dados.');
     } finally {
       setLoading(false);
     }
   };
 
-  // Funções auxiliares (se você usava date/time picker, o formato YYYY-MM-DD é o mínimo)
-  // Como agora estamos usando type="datetime-local" (melhorado), o input cuida do formato de exibição.
 
   return (
-    <div className="editar-demanda-container">
+    <div className="card-cadastro-demanda">
+      <h2>Editar Demanda: {demanda.titulo}</h2>
+      
       <form onSubmit={handleSubmit}>
         
         {/* TITULO E DESCRIÇÃO */}
@@ -128,12 +143,13 @@ const EditarDemanda = ({ demanda, onDemandaAtualizada, onCancel }) => {
           <div className="form-group">
             <label htmlFor="data_prazo">Prazo *</label>
             <input
-              type="datetime-local" // Melhor para incluir hora e data
+              type="datetime-local" 
               id="data_prazo"
               name="data_prazo"
               value={formData.data_prazo}
               onChange={handleChange}
               required
+              max="9999-12-31T23:59" // CORREÇÃO: Limita o ano a 4 dígitos para validação HTML
             />
           </div>
 
