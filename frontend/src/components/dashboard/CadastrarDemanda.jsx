@@ -7,6 +7,7 @@ function CadastrarDemanda({ onDemandaCriada, onCancel }) {
     descricao: '',
     data_prazo: '',
     responsavel_id: '',
+    prioridade: 'normal',
   });
   const [usuarios, setUsuarios] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -47,6 +48,7 @@ function CadastrarDemanda({ onDemandaCriada, onCancel }) {
         ...formData,
         data_prazo: data_prazo_iso, // Usa o formato ISO
         responsavel_id: parseInt(formData.responsavel_id),
+        prioridade: formData.prioridade,
       });
 
       // Limpa o formulário
@@ -55,6 +57,7 @@ function CadastrarDemanda({ onDemandaCriada, onCancel }) {
         descricao: '',
         data_prazo: '',
         responsavel_id: usuarios[0]?.id || '', 
+        prioridade: 'normal',
       });
       
       // Notifica o Dashboard pai
@@ -119,6 +122,24 @@ function CadastrarDemanda({ onDemandaCriada, onCancel }) {
             required
             max="9999-12-31T23:59" // CORREÇÃO: Limita o ano a 4 dígitos para validação HTML
           />
+        </div>
+
+        {/* NOVO BLOCO: Prioridade */}
+        <div>
+          <label htmlFor="prioridade">Prioridade</label>
+          <select
+            id="prioridade"
+            name="prioridade"
+            value={formData.prioridade}
+            onChange={handleChange}
+            required
+            disabled={loading}
+          >
+            <option value="baixa">Baixa</option>
+            <option value="normal">Normal</option>
+            <option value="alta">Alta</option>
+            <option value="urgente">Urgente</option>
+          </select>
         </div>
         
         <div>

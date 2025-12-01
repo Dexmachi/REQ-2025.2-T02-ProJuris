@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
-from app import db # Importe o db do __init__.py
-from app.models import Demanda, User # Importe os modelos criados
+from app import db 
+from app.models import Demanda, User 
 from app.decorators import token_required
 from datetime import datetime
 
@@ -64,7 +64,6 @@ def create_demanda(current_user):
 
     # 3. Processa a data do prazo (deve vir no formato ISO 8601)
     try:
-        # Tenta converter a string de data para objeto datetime
         data_prazo = datetime.fromisoformat(data['data_prazo'].replace('Z', '+00:00')) 
     except ValueError:
         return jsonify({'message': 'Formato de data de prazo inválido. Use formato ISO 8601.'}), 400
@@ -74,7 +73,8 @@ def create_demanda(current_user):
         titulo=data['titulo'],
         descricao=data.get('descricao'),
         data_prazo=data_prazo,
-        responsavel_id=data['responsavel_id']
+        responsavel_id=data['responsavel_id'],
+        prioridade=data.get('prioridade', 'normal') # NOVO: Salva a prioridade
     )
 
     # 5. Salva no banco de dados
@@ -90,7 +90,6 @@ def create_demanda(current_user):
 @bp.route('/usuarios', methods=['GET'])
 @token_required
 def list_users(current_user):
-    # Retorna o ID e o email de todos os usuários para que o frontend possa listar os responsáveis
     users = User.query.all()
     return jsonify([{'id': u.id, 'nome': u.nome, 'email': u.email} for u in users]), 200
 
@@ -124,6 +123,9 @@ def update_demanda(current_user, demanda_id):
     
     if 'status' in data:
         demanda.status = data['status']
+    
+    if 'prioridade' in data: # NOVO: Atualiza a prioridade na edição
+        demanda.prioridade = data['prioridade'] 
     
     # Apenas sócio pode reatribuir demandas
     if 'responsavel_id' in data and current_user.role == 'socio':
@@ -164,7 +166,7 @@ def patch_demanda_status(current_user, demanda_id):
     # 4. Salva no banco de dados
     try:
         db.session.commit()
-        return jsonify({'message': 'Status atualizado com sucesso!', 'demanda': demanda.to_dict()}), 200
+        return jsonify({'message': 'Status atualizado com sucesso!'}), 200
     except Exception as e:
         db.session.rollback()
         return jsonify({'message': f'Erro ao atualizar status: {str(e)}'}), 500
