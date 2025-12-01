@@ -92,7 +92,8 @@ def create_demanda(current_user):
 def list_users(current_user):
     # Retorna o ID e o email de todos os usuários para que o frontend possa listar os responsáveis
     users = User.query.all()
-    return jsonify([{'id': u.id, 'email': u.email} for u in users]), 200
+    return jsonify([{'id': u.id, 'nome': u.nome, 'email': u.email} for u in users]), 200
+
 # Rota Atualizar Demanda ---
 @bp.route('/demandas/<int:demanda_id>', methods=['PUT'])
 @token_required
