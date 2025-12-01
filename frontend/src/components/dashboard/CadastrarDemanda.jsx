@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import api from '../../services/api'; 
-// Importamos o api para fazer requisições POST /demandas e GET /usuarios
+import api from '../../services/api';
 
-function CadastrarDemanda({ onDemandaCriada }) {
+function CadastrarDemanda({ onDemandaCriada, onCancel }) {
   const [formData, setFormData] = useState({
     titulo: '',
     descricao: '',
@@ -12,14 +11,12 @@ function CadastrarDemanda({ onDemandaCriada }) {
   const [usuarios, setUsuarios] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(false);
 
   useEffect(() => {
     // Busca a lista de usuários para popular o campo 'Responsável' (RF03)
     api.get('/usuarios')
       .then(response => {
         setUsuarios(response.data);
-        // Define o primeiro usuário como padrão, se houver, ou deixa para seleção
         if (response.data.length > 0) {
           setFormData(prev => ({ ...prev, responsavel_id: response.data[0].id }));
         }
@@ -33,24 +30,22 @@ function CadastrarDemanda({ onDemandaCriada }) {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    // Limpa erro quando usuário começar a digitar
+    if (error) setError(null);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    setSuccess(false);
 
     try {
-      // Envia os dados para a nova rota '/demandas' (POST)
       const response = await api.post('/demandas', {
         ...formData,
-        // Garante que o responsavel_id seja um número
         responsavel_id: parseInt(formData.responsavel_id),
       });
 
-      setSuccess(true);
-      // Limpa o formulário, mantendo o responsável padrão
+      // Limpa o formulário
       setFormData({ 
         titulo: '',
         descricao: '',
@@ -58,9 +53,14 @@ function CadastrarDemanda({ onDemandaCriada }) {
         responsavel_id: usuarios[0]?.id || '', 
       });
       
-      // Notifica o Dashboard pai para atualizar a lista (se houver)
+      // Notifica o Dashboard pai
       if (onDemandaCriada) {
-          onDemandaCriada(response.data.demanda);
+        onDemandaCriada(response.data.demanda);
+      }
+      
+      alert('✅ Demanda cadastrada com sucesso!');
+      if (onCancel) {
+        setTimeout(() => onCancel(), 500);
       }
 
     } catch (err) {
@@ -72,58 +72,85 @@ function CadastrarDemanda({ onDemandaCriada }) {
   };
 
   return (
-    <div className="cadastro-demanda-container">
-      <h3>Cadastrar Nova Demanda (RF01)</h3>
+    <div className="card-cadastro-demanda">
+      <h2>Cadastrar Nova Demanda</h2>
+      
       <form onSubmit={handleSubmit}>
-        
-        {/* Mensagens de feedback */}
         {error && <p style={{ color: 'red' }}>{error}</p>}
-        {success && <p style={{ color: 'green' }}>Demanda criada com sucesso!</p>}
         
-        <label>Título da Demanda *</label>
-        <input
-          type="text"
-          name="titulo"
-          value={formData.titulo}
-          onChange={handleChange}
-          required
-        />
+        <div>
+          <label htmlFor="titulo">Título da Demanda *</label>
+          <input
+            id="titulo"
+            type="text"
+            name="titulo"
+            value={formData.titulo}
+            onChange={handleChange}
+            placeholder="Ex: Elaborar petição inicial"
+            required
+            maxLength="100"
+          />
+        </div>
 
-        <label>Descrição Detalhada</label>
-        <textarea
-          name="descricao"
-          value={formData.descricao}
-          onChange={handleChange}
-        />
+        <div>
+          <label htmlFor="descricao">Descrição Detalhada</label>
+          <textarea
+            id="descricao"
+            name="descricao"
+            value={formData.descricao}
+            onChange={handleChange}
+            placeholder="Descreva os detalhes da demanda..."
+            rows="4"
+          />
+        </div>
 
-        <label>Prazo Final *</label>
-        <input
-          type="datetime-local" 
-          name="data_prazo"
-          value={formData.data_prazo}
-          onChange={handleChange}
-          required
-        />
+        <div>
+          <label htmlFor="data_prazo">Prazo Final *</label>
+          <input
+            id="data_prazo"
+            type="datetime-local"
+            name="data_prazo"
+            value={formData.data_prazo}
+            onChange={handleChange}
+            required
+          />
+        </div>
         
-        <label>Responsável *</label>
-        <select
-          name="responsavel_id"
-          value={formData.responsavel_id}
-          onChange={handleChange}
-          required
-          disabled={loading || usuarios.length === 0}
-        >
-          <option value="">Selecione o Responsável</option>
-          {usuarios.map(user => (
-            <option key={user.id} value={user.id}>
-              {user.email}
-            </option>
-          ))}
-        </select>
+        <div>
+          <label htmlFor="responsavel_id">Responsável *</label>
+          <select
+            id="responsavel_id"
+            name="responsavel_id"
+            value={formData.responsavel_id}
+            onChange={handleChange}
+            required
+            disabled={loading || usuarios.length === 0}
+          >
+            <option value="">Selecione o Responsável</option>
+            {usuarios.map(user => (
+              <option key={user.id} value={user.id}>
+                {user.nome ? `${user.nome} (${user.email})` : user.email}
+              </option>
+            ))}
+          </select>
+        </div>
         
-        <button type="submit" disabled={loading}>
-          {loading ? 'Cadastrando...' : 'Cadastrar Demanda'}
-        </button>
+        <div className="form-buttons">
+          {onCancel && (
+            <button 
+              type="button" 
+              className="btn-cancel"
+              onClick={onCancel}
+              disabled={loading}
+            >
+              Cancelar
+            </button>
+          )}
+          
+          <button type="submit" disabled={loading}>
+            {loading ? 'Cadastrando...' : 'Cadastrar Demanda'}
+          </button>
+        </div>
       </form>
     </div>
   );
