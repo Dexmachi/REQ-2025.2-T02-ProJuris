@@ -1216,3 +1216,50 @@
         width: 100%;
     }
 }
+
+.logout-container {
+  position: relative;
+}
+
+.logout-user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.logout-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+}
+
+.logout-menu {
+  position: absolute;
+  right: 0;
+  top: 45px;
+  background: white;
+  padding: 10px;
+  box-shadow: 0px 4px 12px rgba(0,0,0,0.15);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  min-width: 130px;
+  z-index: 10;
+}
+
+.logout-menu button {
+  border: none;
+  background: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  cursor: pointer;
+  width: 100%;
+  font-size: 15px;
+}
+
+.logout-menu button:hover {
+  background: #f3f4f6;
+}

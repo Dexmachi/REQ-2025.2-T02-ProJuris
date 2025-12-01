@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, CheckCircle, Clock, Calendar, AlertTriangle, List, Eye, Send, MessageSquare, Menu, User, Edit } from 'lucide-react';
+import { Bell, CheckCircle, Clock, Calendar, AlertTriangle, List, Eye, Send, MessageSquare, Menu, User, Edit,LogOut } from 'lucide-react';
 import '../../style/dashboardFuncionario.css';
 import EditarDemanda from './EditarDemanda';
 import { demandasAPI } from '../../services/api'; // Importa a API
+
 import { useAuth } from '../../context/authContext'; // Importa o contexto para o usuário logado
 
 const DashboardFuncionario = () => {
@@ -137,6 +138,32 @@ const DashboardFuncionario = () => {
     }
   };
 
+  const LogoutButton = ({ userName, userAvatar, onLogout }) => {
+  const [showMenu, setShowMenu] = useState(false);
+
+  return (
+    <div className="logout-container">
+      <div
+        className="logout-user"
+        onClick={() => setShowMenu(!showMenu)}
+      >
+        <img src={userAvatar} alt="avatar" className="logout-avatar" />
+        <span>{userName}</span>
+      </div>
+
+      {showMenu && (
+        <div className="logout-menu">
+          <button onClick={onLogout}>
+            <LogOut size={18} />
+            Sair
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+
   const handleDemandaAtualizada = (demandaAtualizada) => {
     // CORREÇÃO: Recarrega os dados do servidor para sincronizar
     loadDados(); 
@@ -167,6 +194,12 @@ const DashboardFuncionario = () => {
   const handleDragOver = (e) => {
     e.preventDefault();
   };
+
+  const handleLogout = () => {
+  localStorage.removeItem('token');
+  window.location.href = '/login';
+};
+
 
   const handleDrop = async (e, novoStatus) => {
     e.preventDefault();
@@ -321,15 +354,17 @@ const DashboardFuncionario = () => {
             </p>
           </div>
           <div className="header-right">
-            <div className="notifications">
-              <Bell size={24} />
-              <span className="badge">
-                {dados?.notificacoes.filter(n => !n.lida).length}
-              </span>
-            </div>
-            <img src={dados?.user.avatar} alt="User" className="user-avatar" />
-          </div>
-        </header>
+                      <div className="notifications">
+                        <Bell size={24} />
+                        <span className="badge">3</span>
+                      </div>
+                      <LogoutButton
+                        userName={dados?.user.nome}
+                        userAvatar={dados?.user.avatar}
+                        onLogout={handleLogout}
+                      />
+                    </div>
+                  </header>
 
         {/* Stats */}
         <div className="stats-grid">

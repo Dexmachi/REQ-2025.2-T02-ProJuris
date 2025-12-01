@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {
   Bell, Home, Folder, Users, TrendingUp, FileText, Plus, Settings,
-  ChevronLeft, ChevronRight, Calendar, AlertTriangle, Clock, FolderOpen,
-  Menu, List, CheckCircle, Eye, Edit
+  ChevronRight, Calendar, AlertTriangle, Clock, FolderOpen,
+  Menu, List, CheckCircle, Eye, Edit, LogOut
 } from 'lucide-react';
 import '../../style/dashboardSocio.css';
 import CadastrarDemanda from './CadastrarDemanda';
@@ -176,7 +176,43 @@ const DashboardSocio = () => {
   const handleDragOver = (e) => {
     e.preventDefault();
   };
+  const handleLogout = () => {
+  // Limpa o token/sessão
+  localStorage.removeItem('token');
+  
+  // Chama logout do contexto se tiver
+  // logout(); 
+  
+  // Redireciona para login
+  window.location.href = '/login';
+};
 
+ const LogoutButton = ({ userName, userAvatar, onLogout }) => {
+  const [showMenu, setShowMenu] = useState(false);
+
+  return (
+    <div className="logout-container">
+      <div
+        className="logout-user"
+        onClick={() => setShowMenu(!showMenu)}
+      >
+        <img src={userAvatar} alt="avatar" className="logout-avatar" />
+        <span>{userName}</span>
+      </div>
+
+      {showMenu && (
+        <div className="logout-menu">
+          <button onClick={onLogout}>
+            <LogOut size={18} />
+            Sair
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+  const [showMenu, setShowMenu] = useState(false);
 // CORREÇÃO CRÍTICA: LIGA O DRAG & DROP AO BACKEND (RF11)
 const handleDrop = async (e, novoStatusLabel) => {
   e.preventDefault();
@@ -331,10 +367,11 @@ const handleDrop = async (e, novoStatusLabel) => {
               <Bell size={24} />
               <span className="badge">3</span>
             </div>
-            <div className="user-profile">
-              <img src={dados?.user.avatar} alt="User" />
-              <span>{dados?.user.nome}</span>
-            </div>
+            <LogoutButton
+              userName={dados?.user.nome}
+              userAvatar={dados?.user.avatar}
+              onLogout={handleLogout}
+            />
           </div>
         </header>
 
