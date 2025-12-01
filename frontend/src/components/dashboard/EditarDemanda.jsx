@@ -1,38 +1,44 @@
 import React, { useState, useEffect } from 'react';
-import { Save, X } from 'lucide-react';
-import axios from 'axios';
-
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+import { Save, X } from 'lucide-react'; // Ícones lucide-react
+// Importamos a API (para /usuarios) e a demandasAPI (para update)
+import api, { demandasAPI } from '../../services/api'; 
 
 const EditarDemanda = ({ demanda, onDemandaAtualizada, onCancel }) => {
+  // Estado inicial que precisa garantir o ID do responsável e o status
   const [formData, setFormData] = useState({
-    titulo: '',
-    descricao: '',
-    data_prazo: '',
-    prioridade: 'normal'
+    titulo: demanda.titulo || '',
+    descricao: demanda.descricao || '',
+    // Tenta formatar a data que vem do backend (ISO) para o formato HTML datetime-local (YYYY-MM-DDThh:mm)
+    data_prazo: demanda.data_prazo ? new Date(demanda.data_prazo).toISOString().slice(0, 16) : '',
+    status: demanda.status || 'Elaboração',
+    prioridade: demanda.prioridade || 'normal', // Mantém a prioridade para consistência da UI
+    responsavel_id: demanda.responsavel_id || '', // RF05: ID do responsável atual
   });
+
+  const [usuarios, setUsuarios] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Efeito para carregar a lista de usuários (para o campo Responsável)
   useEffect(() => {
-    if (demanda) {
-      // Converte a data do formato brasileiro para ISO (YYYY-MM-DD)
-      let dataISO = '';
-      if (demanda.prazo) {
-        const [dia, mes, ano] = demanda.prazo.split('/');
-        dataISO = `${ano}-${mes}-${dia}`;
-      } else if (demanda.data_prazo) {
-        dataISO = demanda.data_prazo.split('T')[0];
-      }
-
-      setFormData({
-        titulo: demanda.titulo || `Processo ${demanda.id}`,
-        descricao: demanda.descricao || '',
-        data_prazo: dataISO,
-        prioridade: demanda.prioridade || 'normal'
+    // Busca a lista de usuários (RF03)
+    api.get('/usuarios')
+      .then(response => {
+        setUsuarios(response.data);
+        // Tenta pré-selecionar o responsável atual
+        const responsavelAtual = response.data.find(u => u.id === demanda.responsavel_id);
+        if (responsavelAtual) {
+            setFormData(prev => ({ ...prev, responsavel_id: responsavelAtual.id }));
+        } else {
+             // Mantém o ID original se o usuário não for encontrado na lista (caso o fetch falhe)
+             setFormData(prev => ({ ...prev, responsavel_id: demanda.responsavel_id }));
+        }
+      })
+      .catch(err => {
+        console.error("Erro ao carregar usuários para edição:", err);
+        setError("Não foi possível carregar a lista de responsáveis para edição.");
       });
-    }
-  }, [demanda]);
+  }, [demanda.responsavel_id]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -40,6 +46,7 @@ const EditarDemanda = ({ demanda, onDemandaAtualizada, onCancel }) => {
       ...prev,
       [name]: value
     }));
+    if (error) setError('');
   };
 
   const handleSubmit = async (e) => {
@@ -47,78 +54,50 @@ const EditarDemanda = ({ demanda, onDemandaAtualizada, onCancel }) => {
     setError('');
     setLoading(true);
 
+    if (!formData.titulo.trim() || !formData.data_prazo || !formData.responsavel_id) {
+      setError('Título, Prazo e Responsável são obrigatórios.');
+      setLoading(false);
+      return;
+    }
+    
+    // Converte a data do formato datetime-local para o formato ISO 8601 que o backend espera
+    const data_prazo_iso = new Date(formData.data_prazo).toISOString();
+
     try {
-      // Validações
-      if (!formData.titulo.trim()) {
-        setError('O título é obrigatório');
-        setLoading(false);
-        return;
-      }
-
-      if (!formData.data_prazo) {
-        setError('O prazo é obrigatório');
-        setLoading(false);
-        return;
-      }
-
       // Prepara os dados para enviar ao backend
       const dadosAtualizados = {
         titulo: formData.titulo.trim(),
         descricao: formData.descricao.trim(),
-        data_prazo: new Date(formData.data_prazo).toISOString(),
-        prioridade: formData.prioridade
+        data_prazo: data_prazo_iso,
+        status: formData.status, 
+        prioridade: formData.prioridade,
+        responsavel_id: parseInt(formData.responsavel_id), // RF05: Transferir responsabilidade
       };
-
-      // Extrai o ID numérico do código da demanda (ex: "DEM-001" -> "001" ou se já for número, usa direto)
-      let demandaId = demanda.id;
-      if (typeof demandaId === 'string' && demandaId.includes('-')) {
-        // Remove o prefixo e pega apenas o número
-        demandaId = demandaId.split('-').pop();
-      }
-
-      const token = localStorage.getItem('token');
       
-      // Debug logs
-      console.log('🔍 Debug - Editando demanda:');
-      console.log('  ID original:', demanda.id);
-      console.log('  ID para enviar:', demandaId);
-      console.log('  Token existe?', !!token);
-      console.log('  URL:', `${API_BASE_URL}/demandas/${demandaId}`);
-      
-      if (!token) {
-        setError('Você não está autenticado. Faça login novamente.');
-        setLoading(false);
-        return;
-      }
-
-      const response = await axios.put(
-        `${API_BASE_URL}/demandas/${demandaId}`,
-        dadosAtualizados,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
+      // Chama a API PUT para atualizar a demanda (RF02 e RF05)
+      const response = await demandasAPI.update(demanda.id, dadosAtualizados);
 
       if (response.data) {
+        // Notifica o dashboard pai para recarregar ou atualizar a lista
         onDemandaAtualizada(response.data.demanda);
       }
     } catch (err) {
-      console.error('❌ Erro ao atualizar demanda:', err);
-      console.error('  Status:', err.response?.status);
-      console.error('  Dados:', err.response?.data);
-      console.error('  Headers:', err.response?.headers);
-      setError(err.response?.data?.error || 'Erro ao atualizar a demanda. Tente novamente.');
+      console.error('❌ Erro ao atualizar demanda:', err.response?.data || err);
+      // Exibe a mensagem de erro do backend (incluindo erros de permissão RF04)
+      setError(err.response?.data?.message || 'Erro ao atualizar a demanda. Verifique os dados.');
     } finally {
       setLoading(false);
     }
   };
 
+  // Funções auxiliares (se você usava date/time picker, o formato YYYY-MM-DD é o mínimo)
+  // Como agora estamos usando type="datetime-local" (melhorado), o input cuida do formato de exibição.
+
   return (
     <div className="editar-demanda-container">
       <form onSubmit={handleSubmit}>
+        
+        {/* TITULO E DESCRIÇÃO */}
         <div className="form-group">
           <label htmlFor="titulo">Título *</label>
           <input
@@ -144,11 +123,12 @@ const EditarDemanda = ({ demanda, onDemandaAtualizada, onCancel }) => {
           />
         </div>
 
+        {/* PRAZO E PRIORIDADE */}
         <div className="form-row">
           <div className="form-group">
             <label htmlFor="data_prazo">Prazo *</label>
             <input
-              type="date"
+              type="datetime-local" // Melhor para incluir hora e data
               id="data_prazo"
               name="data_prazo"
               value={formData.data_prazo}
@@ -172,8 +152,46 @@ const EditarDemanda = ({ demanda, onDemandaAtualizada, onCancel }) => {
             </select>
           </div>
         </div>
+        
+        {/* STATUS */}
+        <div className="form-group">
+          <label htmlFor="status">Status</label>
+          <select
+            id="status"
+            name="status"
+            value={formData.status}
+            onChange={handleChange}
+            required
+            disabled={loading}
+          >
+            <option value="Elaboração">Elaboração</option>
+            <option value="Em Andamento">Em Andamento</option>
+            <option value="Aguardando Revisão">Aguardando Revisão</option>
+            <option value="Concluído">Concluído</option>
+          </select>
+        </div>
 
-        {error && <div className="error-message">{error}</div>}
+        {/* RESPONSÁVEL (RF05) */}
+        <div className="form-group">
+          <label htmlFor="responsavel_id">Responsável *</label>
+          <select
+            id="responsavel_id"
+            name="responsavel_id"
+            value={formData.responsavel_id}
+            onChange={handleChange}
+            required
+            disabled={loading || usuarios.length === 0}
+          >
+            <option value="">Selecione o Responsável</option>
+            {usuarios.map(user => (
+              <option key={user.id} value={user.id}>
+                {user.nome ? `${user.nome} (${user.email})` : user.email}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {error && <div className="error-message" style={{ color: 'red' }}>{error}</div>}
 
         <div className="form-actions">
           <button

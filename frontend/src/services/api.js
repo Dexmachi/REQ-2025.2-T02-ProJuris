@@ -42,6 +42,8 @@ export const demandasAPI = {
   getAll: () => api.get('/demandas'),
   getById: (id) => api.get(`/demandas/${id}`),
   create: (data) => api.post('/demandas', data),
+  // NOVO: Função para atualizar a demanda
+  update: (id, data) => api.put(`/demandas/${id}`, data), 
   updateStatus: (id, status) => api.patch(`/demandas/${id}/status`, { status }),
   solicitarRevisao: (id) => api.post(`/demandas/${id}/solicitar-revisao`),
 };
