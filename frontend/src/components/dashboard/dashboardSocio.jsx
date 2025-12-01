@@ -215,7 +215,7 @@ const handleDrop = async (e, novoStatusLabel) => {
     
     // 3. Recarrega os dados do dashboard para refletir a persistência
     loadDashboardData();
-    alert(`✅ Status atualizado para: ${novoStatusBackend}`);
+    //alert(`✅ Status atualizado para: ${novoStatusBackend}`);
 
   } catch (error) {
     console.error('Erro ao persistir movimento:', error);
@@ -407,7 +407,7 @@ const handleDrop = async (e, novoStatusLabel) => {
                         draggable
                         onDragStart={(e) => handleDragStart(e, demanda, statusLabels[status])}
                         onDragEnd={handleDragEnd}
-                        className="kanban-card"
+                        className={`kanban-card priority-${getPrioridadeClass(demanda.prioridade)}`}
                       >
                         <div className="card-header">
                           <span className="processo-id">{demanda.id}</span>
@@ -471,7 +471,7 @@ const handleDrop = async (e, novoStatusLabel) => {
               >
                 <Plus size={24} />
                 <div>
-                  <strong>Novo Processo</strong>
+                  <strong>Nova Demanda</strong>
                   <span>Criar instantemente</span>
                 </div>
               </button>

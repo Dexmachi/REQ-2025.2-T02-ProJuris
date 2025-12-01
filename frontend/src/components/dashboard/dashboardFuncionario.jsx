@@ -218,7 +218,7 @@ const DashboardFuncionario = () => {
         
         // 3. Recarrega os dados do dashboard para refletir a persistência
         loadDados();
-        alert(`✅ Status atualizado para: ${novoStatusBackend}`);
+        //alert(`✅ Status atualizado para: ${novoStatusBackend}`);
 
     } catch (error) {
         console.error('Erro ao persistir movimento:', error);

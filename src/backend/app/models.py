@@ -1,7 +1,7 @@
 from app import db, login_manager
 from flask_login import UserMixin
 from datetime import datetime
-from sqlalchemy.orm import relationship # Importação necessária para definir a relação
+from sqlalchemy.orm import relationship 
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -15,7 +15,7 @@ class User(db.Model, UserMixin):
     telefone = db.Column(db.String(20), nullable=True)
     cpf = db.Column(db.String(14), unique=True, nullable=False)
     oab = db.Column(db.String(50), nullable=True)
-    role = db.Column(db.String(20), nullable=False, default='funcionario')  # 'socio' ou 'funcionario'
+    role = db.Column(db.String(20), nullable=False, default='funcionario')
 
     def __repr__(self):
         return f'<User {self.nome} - {self.email}>'
@@ -47,21 +47,18 @@ class User(db.Model, UserMixin):
 class Demanda(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     
-    # RF01: Campo 'atividade'
     titulo = db.Column(db.String(100), nullable=False)
     descricao = db.Column(db.Text, nullable=True) 
     
-    # RF01: Campo 'andamento' (status inicial)
-    # Usamos o status inicial como 'Elaboração', conforme as colunas Kanban (RF12)
     status = db.Column(db.String(50), nullable=False, default='Elaboração') 
     
-    # RF01: Campo 'prazo'
+    # NOVO CAMPO: Prioridade
+    prioridade = db.Column(db.String(50), nullable=False, default='normal') 
+    
     data_prazo = db.Column(db.DateTime, nullable=False)
     
     data_criacao = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     
-    # RF01: Campo 'responsavel'
-    # Cria uma chave estrangeira para o ID do usuário responsável
     responsavel_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     responsavel = relationship('User', backref='demandas', lazy=True)
 
@@ -75,8 +72,9 @@ class Demanda(db.Model):
             'titulo': self.titulo,
             'descricao': self.descricao,
             'status': self.status,
+            'prioridade': self.prioridade, # CRÍTICO: Novo campo para o frontend
             'data_prazo': self.data_prazo.isoformat(),
             'data_criacao': self.data_criacao.isoformat(),
             'responsavel_id': self.responsavel_id,
-            'responsavel_email': self.responsavel.email # Exemplo de como pegar o email
+            'responsavel_email': self.responsavel.email
         }
