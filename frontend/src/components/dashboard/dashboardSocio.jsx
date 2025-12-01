@@ -7,24 +7,26 @@ import {
 import '../../style/dashboardSocio.css';
 import CadastrarDemanda from './CadastrarDemanda';
 import EditarDemanda from './EditarDemanda';
-
-const API_BASE_URL = 'http://localhost:5000/api';
+import { demandasAPI } from '../../services/api'; // NOVO: Importa a API
+import { useAuth } from '../../context/authContext'; // NOVO: Importa o contexto para o usuário logado
 
 const DashboardSocio = () => {
+  const { user } = useAuth(); // Obtém o usuário logado
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [dados, setDados] = useState(null);
   const [loading, setLoading] = useState(true);
   const [draggedCard, setDraggedCard] = useState(null);
 
-  // Estados do modal — deixei antes de verDetalhes por clareza
+  // Estados do modal
   const [modalOpen, setModalOpen] = useState(false);
   const [demandaSelecionada, setDemandaSelecionada] = useState(null);
   const [isCreatingDemanda, setIsCreatingDemanda] = useState(false);
   const [isEditingDemanda, setIsEditingDemanda] = useState(false);
 
+  // Dados mockados restantes (Stats e Notificações)
   const mockData = {
     user: {
-      nome: 'Dr. Fausto Correia',
+      nome: user?.nome || 'Dr. Fausto Correia',
       avatar: 'https://ui-avatars.com/api/?name=Fausto+Correia&background=1e3a8a&color=fff'
     },
     stats: {
@@ -32,22 +34,6 @@ const DashboardSocio = () => {
       prazosPrazo: { value: 89, change: '+5% vs mês anterior' },
       prazosCriticos: { value: 7 },
       tempoMedio: { value: '12 dias', change: '-2 dias vs mês anterior' }
-    },
-    kanban: {
-      novos: [
-        { id: 'DEM-001', prazo: '15/12/2024', responsavel: 'João Silva' },
-        { id: 'DEM-002', prazo: '18/12/2024', responsavel: 'Maria Santos' }
-      ],
-      em_andamento: [
-        { id: 'DEM-003', prazo: '20/12/2024', responsavel: 'João Silva' },
-        { id: 'DEM-004', prazo: '22/12/2024', responsavel: 'Pedro Costa' }
-      ],
-      aguardando: [
-        { id: 'DEM-005', prazo: '10/01/2025', responsavel: 'Maria Santos' }
-      ],
-      concluidos: [
-        { id: 'DEM-006', prazo: '01/12/2024', responsavel: 'João Silva' }
-      ]
     },
     notificacoes: [
       {
@@ -67,6 +53,58 @@ const DashboardSocio = () => {
     ]
   };
 
+  // Funções de Mapeamento: Converte dados do DB para o formato do Kanban
+  const formatDemandasToKanban = (demandasArray) => {
+    const kanban = {
+      novos: [],
+      em_andamento: [],
+      aguardando: [],
+      concluidos: [],
+    };
+
+    demandasArray.forEach(d => {
+      const dataPrazo = new Date(d.data_prazo);
+      const prazoFormatado = `${dataPrazo.getDate().toString().padStart(2, '0')}/${(dataPrazo.getMonth() + 1).toString().padStart(2, '0')}/${dataPrazo.getFullYear()}`;
+      
+      let statusKey;
+      switch (d.status) {
+        case 'Elaboração':
+        case 'Nova':
+          statusKey = 'novos';
+          break;
+        case 'Em Andamento':
+          statusKey = 'em_andamento';
+          break;
+        case 'Aguardando Revisão':
+          statusKey = 'aguardando';
+          break;
+        case 'Concluído':
+        case 'Concluídos':
+          statusKey = 'concluidos';
+          break;
+        default:
+          statusKey = 'novos';
+      }
+
+      const item = {
+        id: d.id, 
+        titulo: d.titulo,
+        descricao: d.descricao,
+        prazo: prazoFormatado,
+        responsavel: d.responsavel_email || 'Não Atribuído', 
+        prioridade: d.prioridade || 'normal', 
+        status: d.status, 
+      };
+
+      if (kanban[statusKey]) {
+        kanban[statusKey].push(item);
+      }
+    });
+
+    return kanban;
+  };
+  // Fim das Funções de Mapeamento
+
   useEffect(() => {
     loadDashboardData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -75,42 +113,37 @@ const DashboardSocio = () => {
   const loadDashboardData = async () => {
     try {
       setLoading(true);
-      // Simulação de fetch — substitua pela chamada real se for o caso
-      setDados(mockData);
+      
+      // 1. Chamada REAL para obter as demandas do DB
+      const demandaResponse = await demandasAPI.getAll();
+      const demandasBackend = demandaResponse.data;
+
+      // 2. Processa os dados para a estrutura Kanban
+      const kanbanData = formatDemandasToKanban(demandasBackend);
+
+      // 3. Combina dados reais com os mocks estáticos (stats, user, notif)
+      const combinedData = {
+          user: mockData.user, 
+          stats: mockData.stats, 
+          kanban: kanbanData, // DADOS REAIS
+          notificacoes: mockData.notificacoes 
+      };
+
+      setDados(combinedData);
       setLoading(false);
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
-      setDados(mockData);
+      // Fallback: Usa os mocks, mas com o kanban vazio (sem dados persistentes)
+      const fallbackData = { ...mockData, kanban: { novos: [], em_andamento: [], aguardando: [], concluidos: [] } };
+      setDados(fallbackData); 
       setLoading(false);
     }
   };
 
   // ADIÇÃO 3: Função para lidar com o sucesso do cadastro de demanda (RF01)
   const handleDemandaCriada = (novaDemandaBackend) => {
-    // Mapeia o objeto recebido do backend para o formato usado no mockData do frontend
-    const dataPrazo = new Date(novaDemandaBackend.data_prazo);
-    const prazoFormatado = `${dataPrazo.getDate().toString().padStart(2, '0')}/${(dataPrazo.getMonth() + 1).toString().padStart(2, '0')}/${dataPrazo.getFullYear()}`;
-    
-    // Cria um objeto compatível com os cartões Kanban existentes no mock
-    const novaDemandaFrontend = {
-      id: `DEM-${Math.floor(Math.random() * 1000)}`, // ID temporário compatível com o mock
-      titulo: novaDemandaBackend.titulo,
-      descricao: novaDemandaBackend.descricao,
-      prazo: prazoFormatado,
-      responsavel: novaDemandaBackend.responsavel_email, // Obtido da resposta do backend
-      prioridade: 'normal'
-    };
-
-    setDados(prev => {
-      if (!prev) return prev; 
-      
-      const newDados = { ...prev };
-      // Adiciona a nova demanda à primeira coluna do Kanban: 'novos'
-      newDados.kanban.novos.unshift(novaDemandaFrontend); 
-      
-      return newDados;
-    });
-
+    // CORREÇÃO: Chamamos loadDashboardData() para RECARREGAR os dados do servidor (Persistência)
+    loadDashboardData(); 
     setIsCreatingDemanda(false); // Fecha o formulário
   };
 
@@ -129,32 +162,8 @@ const DashboardSocio = () => {
   };
 
   const handleDemandaAtualizada = (demandaAtualizada) => {
-    // Atualiza a demanda no estado local
-    setDados(prev => {
-      if (!prev) return prev;
-      
-      const newDados = { ...prev };
-      
-      // Procura e atualiza a demanda em todas as colunas do kanban
-      Object.keys(newDados.kanban).forEach(coluna => {
-        const index = newDados.kanban[coluna].findIndex(d => d.id === demandaAtualizada.id);
-        if (index !== -1) {
-          // Converte data do backend para formato brasileiro
-          const dataPrazo = new Date(demandaAtualizada.data_prazo);
-          const prazoFormatado = `${dataPrazo.getDate().toString().padStart(2, '0')}/${(dataPrazo.getMonth() + 1).toString().padStart(2, '0')}/${dataPrazo.getFullYear()}`;
-          
-          newDados.kanban[coluna][index] = {
-            ...newDados.kanban[coluna][index],
-            titulo: demandaAtualizada.titulo,
-            descricao: demandaAtualizada.descricao,
-            prazo: prazoFormatado,
-            status: demandaAtualizada.status
-          };
-        }
-      });
-      
-      return newDados;
-    });
+    // CORREÇÃO: Recarrega os dados do servidor para sincronizar
+    loadDashboardData(); 
     
     setIsEditingDemanda(false);
     setModalOpen(false);
@@ -245,6 +254,8 @@ const handleDrop = (e, novoStatus) => {
   });
 
   setDraggedCard(null);
+  
+  // NOTE: Para persistir o drag-and-drop, você precisaria de uma chamada PUT/PATCH para o backend aqui.
 };
 
 
@@ -304,7 +315,7 @@ const handleDrop = (e, novoStatus) => {
           <div className="header-right">
             <div className="notifications">
               <Bell size={24} />
-              <span className="badge">3</span>
+              <span className="badge">{dados?.notificacoes.filter(n => n.urgente).length || 0}</span>
             </div>
             <div className="user-profile">
               <img src={dados?.user.avatar} alt="User" />
@@ -356,9 +367,9 @@ const handleDrop = (e, novoStatus) => {
 
               return (
                 <div
-  key={status}
-  className={`kanban-column kanban-${status}`}
->
+                  key={status}
+                  className={`kanban-column kanban-${status}`}
+                >
                 
                   <div className="column-header">
                     <h3>
@@ -385,7 +396,7 @@ const handleDrop = (e, novoStatus) => {
                         className="kanban-card"
                       >
                         <div className="card-header">
-                          <span className="processo-id">{demanda.id}</span>
+                          <span className="processo-id">DEM-{demanda.id}</span>
                           <span className={`priority-badge ${getPrioridadeClass(demanda.prioridade)}`}>
                             {demanda.prioridade || 'normal'}
                           </span>
@@ -455,8 +466,7 @@ const handleDrop = (e, novoStatus) => {
         </div>
       </main>
 
-      {/* ADIÇÃO 5: Modal/Componente para Cadastro de Demanda (RF01) */}
-      {/* Exibe o formulário de cadastro em um modal quando isCreatingDemanda é true */}
+      {/* Modal/Componente para Cadastro de Demanda (RF01) */}
       {isCreatingDemanda && (
         <div className="modal-overlay" onClick={() => setIsCreatingDemanda(false)}>
             <div className="modal-content large" onClick={e => e.stopPropagation()}>
@@ -491,7 +501,7 @@ const handleDrop = (e, novoStatus) => {
                 <div className="modal-body">
                   <div className="detail-row">
                     <strong>ID:</strong>
-                    <span>{demandaSelecionada.id}</span>
+                    <span>DEM-{demandaSelecionada.id}</span>
                   </div>
                   
                   <div className="detail-row">
@@ -544,7 +554,5 @@ const handleDrop = (e, novoStatus) => {
     </div>
   );
 };
-
-
 
 export default DashboardSocio;

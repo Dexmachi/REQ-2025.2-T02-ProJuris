@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Bell, CheckCircle, Clock, Calendar, AlertTriangle, List, Eye, Send, MessageSquare, Menu, User, Edit } from 'lucide-react';
 import '../../style/dashboardFuncionario.css';
 import EditarDemanda from './EditarDemanda';
-
-const API_BASE_URL = 'http://localhost:5000/api';
+import { demandasAPI } from '../../services/api'; // NOVO: Importa a API
+import { useAuth } from '../../context/authContext'; // NOVO: Importa o contexto para o usuário logado
 
 const DashboardFuncionario = () => {
+  const { user } = useAuth(); // Obtém o usuário logado (João/Maria)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [dados, setDados] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -13,65 +14,22 @@ const DashboardFuncionario = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [demandaSelecionada, setDemandaSelecionada] = useState(null);
   const [isEditingDemanda, setIsEditingDemanda] = useState(false);
-  const [userId] = useState('123');
+  
+  // Usamos o ID real do usuário logado
+  const userId = user?.id; 
 
+  // Dados Mockados Restantes (Stats e Notificações)
   const mockData = {
     user: {
-      id: '123',
-      nome: 'João Silva',
+      id: userId,
+      nome: user?.nome || 'Funcionário',
       avatar: 'https://ui-avatars.com/api/?name=João+Silva&background=1e3a8a&color=fff'
     },
     stats: {
-      total: 8,
-      emAndamento: 3,
-      aguardandoRevisao: 2,
-      urgentes: 1
-    },
-    demandas: {
-      novas: [
-        {
-          id: 'DEM-001',
-          titulo: 'Elaborar petição inicial - Cliente A',
-          descricao: 'Ação de indenização por danos morais',
-          prazo: '05/12/2024',
-          prioridade: 'alta',
-          atribuidoPor: 'Dr. Fausto',
-          responsavelId: '123'
-        }
-      ],
-      em_andamento: [
-        {
-          id: 'DEM-003',
-          titulo: 'Responder contestação',
-          descricao: 'Processo 1234/2024',
-          prazo: '02/12/2024',
-          prioridade: 'urgente',
-          atribuidoPor: 'Dr. Fausto',
-          responsavelId: '123'
-        }
-      ],
-      aguardando_revisao: [
-        {
-          id: 'DEM-006',
-          titulo: 'Análise de viabilidade',
-          descricao: 'Parecer jurídico preliminar',
-          prazo: '28/11/2024',
-          prioridade: 'normal',
-          atribuidoPor: 'Dr. Fausto',
-          responsavelId: '123'
-        }
-      ],
-      concluidas: [
-        {
-          id: 'DEM-008',
-          titulo: 'Organização de documentos',
-          descricao: 'Processo 9999',
-          prazo: '25/11/2024',
-          prioridade: 'normal',
-          atribuidoPor: 'Dr. Fausto',
-          responsavelId: '123'
-        }
-      ]
+      total: 0, 
+      emAndamento: 0, 
+      aguardandoRevisao: 0, 
+      urgentes: 0
     },
     notificacoes: [
       {
@@ -85,17 +43,100 @@ const DashboardFuncionario = () => {
     ]
   };
 
+  // Funções de Mapeamento: Converte dados do DB para o formato do Kanban do Funcionário, aplicando filtro
+  const formatDemandasToKanbanFuncionario = (demandasArray, currentUserId) => {
+    const kanban = {
+      novas: [],
+      em_andamento: [],
+      aguardando_revisao: [],
+      concluidas: [],
+    };
+    
+    // Filtra apenas as demandas atribuídas a este usuário
+    demandasArray
+      .filter(d => d.responsavel_id === currentUserId) 
+      .forEach(d => {
+        const dataPrazo = new Date(d.data_prazo);
+        const prazoFormatado = `${dataPrazo.getDate().toString().padStart(2, '0')}/${(dataPrazo.getMonth() + 1).toString().padStart(2, '0')}/${dataPrazo.getFullYear()}`;
+        
+        let statusKey;
+        switch (d.status) {
+          case 'Elaboração':
+          case 'Nova':
+            statusKey = 'novas';
+            break;
+          case 'Em Andamento':
+            statusKey = 'em_andamento';
+            break;
+          case 'Aguardando Revisão':
+            statusKey = 'aguardando_revisao';
+            break;
+          case 'Concluído':
+          case 'Concluídos':
+            statusKey = 'concluidas';
+            break;
+          default:
+            statusKey = 'novas';
+        }
+
+        const item = {
+          id: d.id, 
+          titulo: d.titulo,
+          descricao: d.descricao,
+          prazo: prazoFormatado,
+          prioridade: d.prioridade || 'normal', 
+          atribuidoPor: 'Sócio', // Simplificado
+          responsavelId: d.responsavel_id
+        };
+
+        if (kanban[statusKey]) {
+          kanban[statusKey].push(item);
+        }
+      });
+
+    return kanban;
+  };
+  // Fim das Funções de Mapeamento
+
   useEffect(() => {
-    loadDados();
-  }, []);
+    if (userId) { // Só carrega se o ID do usuário estiver disponível
+      loadDados();
+    }
+  }, [userId]); // Dependência no userId para carregar após o login
 
   const loadDados = async () => {
     try {
       setLoading(true);
-      setDados(mockData);
+      
+      // 1. Chamada REAL para obter TODAS as demandas do DB
+      const demandaResponse = await demandasAPI.getAll();
+      const demandasBackend = demandaResponse.data;
+
+      // 2. Processa os dados, filtrando por funcionário e estruturando para Kanban
+      const kanbanData = formatDemandasToKanbanFuncionario(demandasBackend, userId);
+
+      // 3. Recalcula as estatísticas com base nos dados reais
+      const totalDemandasFuncionario = demandasBackend.filter(d => d.responsavel_id === userId).length;
+      const emAndamento = kanbanData.em_andamento.length;
+      const aguardandoRevisao = kanbanData.aguardando_revisao.length;
+
+      const combinedData = {
+          user: mockData.user, 
+          stats: {
+            ...mockData.stats,
+            total: totalDemandasFuncionario,
+            emAndamento,
+            aguardandoRevisao
+          }, 
+          demandas: kanbanData, // DADOS REAIS
+          notificacoes: mockData.notificacoes 
+      };
+
+      setDados(combinedData);
       setLoading(false);
     } catch (error) {
       console.error('Erro:', error);
+      // Fallback para mock em caso de falha de conexão
       setDados(mockData);
       setLoading(false);
     }
@@ -129,7 +170,7 @@ const DashboardFuncionario = () => {
     if (!draggedCard) return;
 
     const { demanda, status: statusAntigo } = draggedCard;
-    const novoStatusKey = getStatusKey(novoStatus);
+    const novoStatusKey = novoStatus; 
 
     // Regras de negócio
     if (demanda.responsavelId !== userId) {
@@ -146,12 +187,14 @@ const DashboardFuncionario = () => {
       alert('⚠️ Apenas o sócio pode marcar demandas como concluídas. Envie para revisão.');
       return;
     }
+    
+    // NOTE: Uma chamada PUT/PATCH para atualizar o status no backend seria necessária aqui.
 
-    // Mover demanda SEM DUPLICAR
+    // Move a demanda localmente (o reload corrigirá a persistência)
     setDados(prev => {
       const newDados = { ...prev };
 
-      // 1. Remove de TODAS as colunas (evita duplicação)
+      // 1. Remove de TODAS as colunas
       Object.keys(newDados.demandas).forEach(col => {
         newDados.demandas[col] = newDados.demandas[col].filter(
           d => d.id !== demanda.id
@@ -166,6 +209,9 @@ const DashboardFuncionario = () => {
 
     setDraggedCard(null);
 
+    // Recarrega os dados para sincronizar com o DB (se a chamada PUT/PATCH falhar, o estado volta ao DB)
+    loadDados(); 
+    
     if (novoStatus === 'aguardando_revisao') {
       alert('✅ Demanda enviada para revisão!');
     } else {
@@ -184,31 +230,8 @@ const DashboardFuncionario = () => {
   };
 
   const handleDemandaAtualizada = (demandaAtualizada) => {
-    // Atualiza a demanda no estado local
-    setDados(prev => {
-      if (!prev) return prev;
-      
-      const newDados = { ...prev };
-      
-      // Procura e atualiza a demanda em todas as colunas
-      Object.keys(newDados.demandas).forEach(coluna => {
-        const index = newDados.demandas[coluna].findIndex(d => d.id === demandaAtualizada.id);
-        if (index !== -1) {
-          const dataPrazo = new Date(demandaAtualizada.data_prazo);
-          const prazoFormatado = `${dataPrazo.getDate().toString().padStart(2, '0')}/${(dataPrazo.getMonth() + 1).toString().padStart(2, '0')}/${dataPrazo.getFullYear()}`;
-          
-          newDados.demandas[coluna][index] = {
-            ...newDados.demandas[coluna][index],
-            titulo: demandaAtualizada.titulo,
-            descricao: demandaAtualizada.descricao,
-            prazo: prazoFormatado,
-            status: demandaAtualizada.status
-          };
-        }
-      });
-      
-      return newDados;
-    });
+    // CORREÇÃO: Recarrega os dados do servidor para sincronizar
+    loadDados(); 
     
     setIsEditingDemanda(false);
     setModalOpen(false);
@@ -217,18 +240,9 @@ const DashboardFuncionario = () => {
 
   const solicitarRevisao = () => {
     if (demandaSelecionada) {
-      const statusAtual = Object.keys(dados.demandas).find(key =>
-        dados.demandas[key].some(d => d.id === demandaSelecionada.id)
-      );
-
-      setDados(prev => {
-        const newDados = { ...prev };
-        newDados.demandas[statusAtual] = newDados.demandas[statusAtual].filter(
-          d => d.id !== demandaSelecionada.id
-        );
-        newDados.demandas.aguardando_revisao.push(demandaSelecionada);
-        return newDados;
-      });
+      // NOTE: Aqui deveria haver uma chamada para o backend. 
+      // Apenas recarregamos para que o próximo refresh leia o status correto do DB.
+      loadDados(); 
 
       setModalOpen(false);
       alert('✅ Revisão solicitada! O sócio será notificado.');
@@ -250,17 +264,17 @@ const DashboardFuncionario = () => {
   };
 
   const getStatusKey = (status) => {
-  const map = {
-    'Novos': 'novos',
-    'Em Andamento': 'em_andamento',
-    'Aguardando': 'aguardando',
-    'Concluídos': 'concluidos'
+    const map = {
+      'Novas': 'novas',
+      'Em Andamento': 'em_andamento',
+      'Aguardando Revisão': 'aguardando_revisao',
+      'Concluídas': 'concluidas'
+    };
+    return map[status] || status;
   };
-  return map[status] || status;
-};
 
 
-  if (loading) {
+  if (loading || !userId) { 
     return (
       <div className="loading-container">
         <div className="loading-spinner"></div>
@@ -312,7 +326,7 @@ const DashboardFuncionario = () => {
             <div className="notifications">
               <Bell size={24} />
               <span className="badge">
-                {dados?.notificacoes.filter(n => !n.lida).length}
+                {dados?.notificacoes.filter(n => !n.lida).length || 0}
               </span>
             </div>
             <img src={dados?.user.avatar} alt="User" className="user-avatar" />
@@ -401,7 +415,7 @@ const DashboardFuncionario = () => {
                       className="kanban-card"
                     >
                       <div className="card-header">
-                        <span className="processo-id">{demanda.id}</span>
+                        <span className="processo-id">DEM-{demanda.id}</span>
                         <span className={`priority-badge ${getPrioridadeClass(demanda.prioridade)}`}>
                           {demanda.prioridade}
                         </span>
@@ -479,7 +493,7 @@ const DashboardFuncionario = () => {
                 <div className="modal-body">
                   <div className="detail-row">
                     <strong>ID:</strong>
-                    <span>{demandaSelecionada.id}</span>
+                    <span>DEM-{demandaSelecionada.id}</span>
                   </div>
                   
                   <div className="detail-row">
