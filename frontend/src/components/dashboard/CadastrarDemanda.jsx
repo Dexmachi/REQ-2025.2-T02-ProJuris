@@ -39,9 +39,13 @@ function CadastrarDemanda({ onDemandaCriada, onCancel }) {
     setLoading(true);
     setError(null);
 
+    // Converte o data_prazo de volta para o formato ISO 8601 (o backend espera)
+    const data_prazo_iso = new Date(formData.data_prazo).toISOString();
+
     try {
       const response = await api.post('/demandas', {
         ...formData,
+        data_prazo: data_prazo_iso, // Usa o formato ISO
         responsavel_id: parseInt(formData.responsavel_id),
       });
 
@@ -113,6 +117,7 @@ function CadastrarDemanda({ onDemandaCriada, onCancel }) {
             value={formData.data_prazo}
             onChange={handleChange}
             required
+            max="9999-12-31T23:59" // CORREÇÃO: Limita o ano a 4 dígitos para validação HTML
           />
         </div>
         

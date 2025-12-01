@@ -7,17 +7,69 @@ import {
 import '../../style/dashboardSocio.css';
 import CadastrarDemanda from './CadastrarDemanda';
 import EditarDemanda from './EditarDemanda';
-import { demandasAPI } from '../../services/api'; // NOVO: Importa a API
-import { useAuth } from '../../context/authContext'; // NOVO: Importa o contexto para o usuário logado
+import { demandasAPI } from '../../services/api'; // Importa a API
+import { useAuth } from '../../context/authContext'; // Importa o contexto para o usuário logado
+
+// Funções de Mapeamento: Converte dados do DB para o formato do Kanban
+const formatDemandasToKanban = (demandasArray) => {
+  const kanban = {
+    novos: [],
+    em_andamento: [],
+    aguardando: [],
+    concluidos: [],
+  };
+
+  demandasArray.forEach(d => {
+    const dataPrazo = new Date(d.data_prazo);
+    const prazoFormatado = `${dataPrazo.getDate().toString().padStart(2, '0')}/${(dataPrazo.getMonth() + 1).toString().padStart(2, '0')}/${dataPrazo.getFullYear()}`;
+    
+    let statusKey;
+    switch (d.status) {
+      case 'Elaboração':
+      case 'Nova':
+        statusKey = 'novos';
+        break;
+      case 'Em Andamento':
+        statusKey = 'em_andamento';
+        break;
+      case 'Aguardando Revisão':
+        statusKey = 'aguardando';
+        break;
+      case 'Concluído':
+      case 'Concluídos':
+        statusKey = 'concluidos';
+        break;
+      default:
+        statusKey = 'novos';
+    }
+
+    const item = {
+      id: d.id, 
+      titulo: d.titulo,
+      descricao: d.descricao,
+      prazo: prazoFormatado,
+      responsavel: d.responsavel_email || 'Não Atribuído', 
+      prioridade: d.prioridade || 'normal', 
+      status: d.status, // Mantém o status original do backend
+      responsavel_id: d.responsavel_id, // Incluído para futuras verificações de permissão
+    };
+
+    if (kanban[statusKey]) {
+      kanban[statusKey].push(item);
+    }
+  });
+
+  return kanban;
+};
+// Fim das Funções de Mapeamento
 
 const DashboardSocio = () => {
-  const { user } = useAuth(); // Obtém o usuário logado
+  const { user } = useAuth(); 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [dados, setDados] = useState(null);
   const [loading, setLoading] = useState(true);
   const [draggedCard, setDraggedCard] = useState(null);
 
-  // Estados do modal
   const [modalOpen, setModalOpen] = useState(false);
   const [demandaSelecionada, setDemandaSelecionada] = useState(null);
   const [isCreatingDemanda, setIsCreatingDemanda] = useState(false);
@@ -53,58 +105,6 @@ const DashboardSocio = () => {
     ]
   };
 
-  // Funções de Mapeamento: Converte dados do DB para o formato do Kanban
-  const formatDemandasToKanban = (demandasArray) => {
-    const kanban = {
-      novos: [],
-      em_andamento: [],
-      aguardando: [],
-      concluidos: [],
-    };
-
-    demandasArray.forEach(d => {
-      const dataPrazo = new Date(d.data_prazo);
-      const prazoFormatado = `${dataPrazo.getDate().toString().padStart(2, '0')}/${(dataPrazo.getMonth() + 1).toString().padStart(2, '0')}/${dataPrazo.getFullYear()}`;
-      
-      let statusKey;
-      switch (d.status) {
-        case 'Elaboração':
-        case 'Nova':
-          statusKey = 'novos';
-          break;
-        case 'Em Andamento':
-          statusKey = 'em_andamento';
-          break;
-        case 'Aguardando Revisão':
-          statusKey = 'aguardando';
-          break;
-        case 'Concluído':
-        case 'Concluídos':
-          statusKey = 'concluidos';
-          break;
-        default:
-          statusKey = 'novos';
-      }
-
-      const item = {
-        id: d.id, 
-        titulo: d.titulo,
-        descricao: d.descricao,
-        prazo: prazoFormatado,
-        responsavel: d.responsavel_email || 'Não Atribuído', 
-        prioridade: d.prioridade || 'normal', 
-        status: d.status, 
-      };
-
-      if (kanban[statusKey]) {
-        kanban[statusKey].push(item);
-      }
-    });
-
-    return kanban;
-  };
-  // Fim das Funções de Mapeamento
-
   useEffect(() => {
     loadDashboardData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -114,18 +114,15 @@ const DashboardSocio = () => {
     try {
       setLoading(true);
       
-      // 1. Chamada REAL para obter as demandas do DB
       const demandaResponse = await demandasAPI.getAll();
       const demandasBackend = demandaResponse.data;
 
-      // 2. Processa os dados para a estrutura Kanban
       const kanbanData = formatDemandasToKanban(demandasBackend);
 
-      // 3. Combina dados reais com os mocks estáticos (stats, user, notif)
       const combinedData = {
           user: mockData.user, 
           stats: mockData.stats, 
-          kanban: kanbanData, // DADOS REAIS
+          kanban: kanbanData, 
           notificacoes: mockData.notificacoes 
       };
 
@@ -133,19 +130,25 @@ const DashboardSocio = () => {
       setLoading(false);
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
-      // Fallback: Usa os mocks, mas com o kanban vazio (sem dados persistentes)
       const fallbackData = { ...mockData, kanban: { novos: [], em_andamento: [], aguardando: [], concluidos: [] } };
       setDados(fallbackData); 
       setLoading(false);
     }
   };
 
-  // ADIÇÃO 3: Função para lidar com o sucesso do cadastro de demanda (RF01)
   const handleDemandaCriada = (novaDemandaBackend) => {
-    // CORREÇÃO: Chamamos loadDashboardData() para RECARREGAR os dados do servidor (Persistência)
     loadDashboardData(); 
-    setIsCreatingDemanda(false); // Fecha o formulário
+    setIsCreatingDemanda(false);
+    alert('✅ Demanda cadastrada com sucesso!');
   };
+
+  const handleDemandaAtualizada = (demandaAtualizada) => {
+    loadDashboardData(); 
+    setIsEditingDemanda(false);
+    setModalOpen(false);
+    alert('✅ Demanda atualizada com sucesso!');
+  };
+
 
   const getPrioridadeClass = (prioridade) => {
     return prioridade?.toLowerCase() || 'normal';
@@ -161,15 +164,79 @@ const DashboardSocio = () => {
     setIsEditingDemanda(true);
   };
 
-  const handleDemandaAtualizada = (demandaAtualizada) => {
-    // CORREÇÃO: Recarrega os dados do servidor para sincronizar
-    loadDashboardData(); 
-    
-    setIsEditingDemanda(false);
-    setModalOpen(false);
-    alert('✅ Demanda atualizada com sucesso!');
+  const handleDragStart = (e, demanda, status) => {
+    setDraggedCard({ demanda, status });
+    e.currentTarget.style.opacity = '0.5';
   };
 
+  const handleDragEnd = (e) => {
+    e.currentTarget.style.opacity = '1';
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+  };
+
+// CORREÇÃO CRÍTICA: LIGA O DRAG & DROP AO BACKEND (RF11)
+const handleDrop = async (e, novoStatusLabel) => {
+  e.preventDefault();
+
+  if (!draggedCard) return;
+
+  const { demanda, status: statusAntigoLabel } = draggedCard;
+
+  // 1. Mapeia o status do Frontend (Label) para o status do Backend (Valor)
+  let novoStatusBackend;
+  switch (novoStatusLabel) {
+    case 'Novos':
+      novoStatusBackend = 'Elaboração';
+      break;
+    case 'Em Andamento':
+      novoStatusBackend = 'Em Andamento';
+      break;
+    case 'Aguardando':
+      novoStatusBackend = 'Aguardando Revisão';
+      break;
+    case 'Concluídos':
+      novoStatusBackend = 'Concluído';
+      break;
+    default:
+      return;
+  }
+  
+  // Regra de segurança extra: Sócios podem mover tudo.
+  // A verificação de permissão principal é feita no backend (main.py).
+  
+  setDraggedCard(null);
+
+  try {
+    // 2. Chama a API para atualizar o status (PATCH /demandas/<id>/status)
+    await demandasAPI.updateStatus(demanda.id, novoStatusBackend);
+    
+    // 3. Recarrega os dados do dashboard para refletir a persistência
+    loadDashboardData();
+    alert(`✅ Status atualizado para: ${novoStatusBackend}`);
+
+  } catch (error) {
+    console.error('Erro ao persistir movimento:', error);
+    alert('❌ Falha ao atualizar o status da demanda. Verifique sua permissão.');
+    loadDashboardData(); // Recarrega para voltar o cartão para a posição salva no DB
+  }
+};
+
+
+  const getStatusKey = (status) => {
+    const map = {
+      'Novos': 'novos',
+      'Em Andamento': 'em_andamento',
+      'Aguardando': 'aguardando',
+      'Concluídos': 'concluidos'
+    };
+    return map[status] || status;
+  };
+
+// ... (O restante do código de renderização do componente não muda)
+//...
   const menuItems = [
     { icon: Home, label: 'Processos', active: true },
     { icon: Folder, label: 'Tarefas' },
@@ -214,60 +281,7 @@ const DashboardSocio = () => {
     }
   ] : [];
 
-  const handleDragStart = (e, demanda, status) => {
-    setDraggedCard({ demanda, status });
-    e.currentTarget.style.opacity = '0.5';
-  };
-
-  const handleDragEnd = (e) => {
-    e.currentTarget.style.opacity = '1';
-  };
-
-  const handleDragOver = (e) => {
-    e.preventDefault();
-  };
-
-const handleDrop = (e, novoStatus) => {
-  e.preventDefault();
-
-  if (!draggedCard) return;
-
-  const { demanda, status: statusAntigo } = draggedCard;
-
-  setDados(prev => {
-    const newDados = { ...prev };
-
-    const statusKey = getStatusKey(statusAntigo);
-    const novoStatusKey = getStatusKey(novoStatus);
-
-    // REMOVE em qualquer caso (prevenir duplicação)
-    Object.keys(newDados.kanban).forEach(col => {
-      newDados.kanban[col] = newDados.kanban[col].filter(
-        d => d.id !== demanda.id
-      );
-    });
-
-    // ADICIONA à nova coluna
-    newDados.kanban[novoStatusKey].push(demanda);
-
-    return newDados;
-  });
-
-  setDraggedCard(null);
-  
-  // NOTE: Para persistir o drag-and-drop, você precisaria de uma chamada PUT/PATCH para o backend aqui.
-};
-
-
-  const getStatusKey = (status) => {
-    const map = {
-      'Novos': 'novos',
-      'Em Andamento': 'em_andamento',
-      'Aguardando': 'aguardando',
-      'Concluídos': 'concluidos'
-    };
-    return map[status] || status;
-  };
+// ... (Resto do código de renderização)
 
   if (loading) {
     return (
@@ -315,7 +329,7 @@ const handleDrop = (e, novoStatus) => {
           <div className="header-right">
             <div className="notifications">
               <Bell size={24} />
-              <span className="badge">{dados?.notificacoes.filter(n => n.urgente).length || 0}</span>
+              <span className="badge">3</span>
             </div>
             <div className="user-profile">
               <img src={dados?.user.avatar} alt="User" />
@@ -385,7 +399,7 @@ const handleDrop = (e, novoStatus) => {
                   <div
                     className="column-content"
                     onDragOver={handleDragOver}
-                    onDrop={(e) => handleDrop(e, statusLabels[status])}
+                    onDrop={(e) => handleDrop(e, statusLabels[status])} // Passa o label para o handler
                   >
                     {demandas.map((demanda) => (
                       <div
@@ -396,7 +410,7 @@ const handleDrop = (e, novoStatus) => {
                         className="kanban-card"
                       >
                         <div className="card-header">
-                          <span className="processo-id">DEM-{demanda.id}</span>
+                          <span className="processo-id">{demanda.id}</span>
                           <span className={`priority-badge ${getPrioridadeClass(demanda.prioridade)}`}>
                             {demanda.prioridade || 'normal'}
                           </span>
@@ -501,7 +515,7 @@ const handleDrop = (e, novoStatus) => {
                 <div className="modal-body">
                   <div className="detail-row">
                     <strong>ID:</strong>
-                    <span>DEM-{demandaSelecionada.id}</span>
+                    <span>{demandaSelecionada.id}</span>
                   </div>
                   
                   <div className="detail-row">

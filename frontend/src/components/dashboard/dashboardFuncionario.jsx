@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Bell, CheckCircle, Clock, Calendar, AlertTriangle, List, Eye, Send, MessageSquare, Menu, User, Edit } from 'lucide-react';
 import '../../style/dashboardFuncionario.css';
 import EditarDemanda from './EditarDemanda';
-import { demandasAPI } from '../../services/api'; // NOVO: Importa a API
-import { useAuth } from '../../context/authContext'; // NOVO: Importa o contexto para o usuário logado
+import { demandasAPI } from '../../services/api'; // Importa a API
+import { useAuth } from '../../context/authContext'; // Importa o contexto para o usuário logado
 
 const DashboardFuncionario = () => {
   const { user } = useAuth(); // Obtém o usuário logado (João/Maria)
@@ -15,7 +15,6 @@ const DashboardFuncionario = () => {
   const [demandaSelecionada, setDemandaSelecionada] = useState(null);
   const [isEditingDemanda, setIsEditingDemanda] = useState(false);
   
-  // Usamos o ID real do usuário logado
   const userId = user?.id; 
 
   // Dados Mockados Restantes (Stats e Notificações)
@@ -108,14 +107,11 @@ const DashboardFuncionario = () => {
     try {
       setLoading(true);
       
-      // 1. Chamada REAL para obter TODAS as demandas do DB
       const demandaResponse = await demandasAPI.getAll();
       const demandasBackend = demandaResponse.data;
 
-      // 2. Processa os dados, filtrando por funcionário e estruturando para Kanban
       const kanbanData = formatDemandasToKanbanFuncionario(demandasBackend, userId);
 
-      // 3. Recalcula as estatísticas com base nos dados reais
       const totalDemandasFuncionario = demandasBackend.filter(d => d.responsavel_id === userId).length;
       const emAndamento = kanbanData.em_andamento.length;
       const aguardandoRevisao = kanbanData.aguardando_revisao.length;
@@ -136,10 +132,18 @@ const DashboardFuncionario = () => {
       setLoading(false);
     } catch (error) {
       console.error('Erro:', error);
-      // Fallback para mock em caso de falha de conexão
       setDados(mockData);
       setLoading(false);
     }
+  };
+
+  const handleDemandaAtualizada = (demandaAtualizada) => {
+    // CORREÇÃO: Recarrega os dados do servidor para sincronizar
+    loadDados(); 
+    
+    setIsEditingDemanda(false);
+    setModalOpen(false);
+    alert('✅ Demanda atualizada com sucesso!');
   };
 
   const menuItems = [
@@ -170,7 +174,25 @@ const DashboardFuncionario = () => {
     if (!draggedCard) return;
 
     const { demanda, status: statusAntigo } = draggedCard;
-    const novoStatusKey = novoStatus; 
+
+    // Mapeia o status do Frontend (Key) para o status do Backend (Valor)
+    let novoStatusBackend;
+    switch (novoStatus) {
+      case 'novas':
+        novoStatusBackend = 'Elaboração';
+        break;
+      case 'em_andamento':
+        novoStatusBackend = 'Em Andamento';
+        break;
+      case 'aguardando_revisao':
+        novoStatusBackend = 'Aguardando Revisão';
+        break;
+      case 'concluidas':
+        novoStatusBackend = 'Concluído';
+        break;
+      default:
+        return;
+    }
 
     // Regras de negócio
     if (demanda.responsavelId !== userId) {
@@ -187,35 +209,21 @@ const DashboardFuncionario = () => {
       alert('⚠️ Apenas o sócio pode marcar demandas como concluídas. Envie para revisão.');
       return;
     }
-    
-    // NOTE: Uma chamada PUT/PATCH para atualizar o status no backend seria necessária aqui.
-
-    // Move a demanda localmente (o reload corrigirá a persistência)
-    setDados(prev => {
-      const newDados = { ...prev };
-
-      // 1. Remove de TODAS as colunas
-      Object.keys(newDados.demandas).forEach(col => {
-        newDados.demandas[col] = newDados.demandas[col].filter(
-          d => d.id !== demanda.id
-        );
-      });
-
-      // 2. Adiciona só na coluna destino
-      newDados.demandas[novoStatusKey].push(demanda);
-
-      return newDados;
-    });
 
     setDraggedCard(null);
 
-    // Recarrega os dados para sincronizar com o DB (se a chamada PUT/PATCH falhar, o estado volta ao DB)
-    loadDados(); 
-    
-    if (novoStatus === 'aguardando_revisao') {
-      alert('✅ Demanda enviada para revisão!');
-    } else {
-      alert('✅ Demanda movida com sucesso!');
+    try {
+        // 2. Chama a API para atualizar o status (PATCH /demandas/<id>/status)
+        await demandasAPI.updateStatus(demanda.id, novoStatusBackend);
+        
+        // 3. Recarrega os dados do dashboard para refletir a persistência
+        loadDados();
+        alert(`✅ Status atualizado para: ${novoStatusBackend}`);
+
+    } catch (error) {
+        console.error('Erro ao persistir movimento:', error);
+        alert('❌ Falha ao atualizar o status da demanda. Verifique sua permissão.');
+        loadDados(); // Recarrega para voltar o cartão para a posição salva no DB
     }
   };
 
@@ -229,19 +237,9 @@ const DashboardFuncionario = () => {
     setIsEditingDemanda(true);
   };
 
-  const handleDemandaAtualizada = (demandaAtualizada) => {
-    // CORREÇÃO: Recarrega os dados do servidor para sincronizar
-    loadDados(); 
-    
-    setIsEditingDemanda(false);
-    setModalOpen(false);
-    alert('✅ Demanda atualizada com sucesso!');
-  };
-
   const solicitarRevisao = () => {
     if (demandaSelecionada) {
       // NOTE: Aqui deveria haver uma chamada para o backend. 
-      // Apenas recarregamos para que o próximo refresh leia o status correto do DB.
       loadDados(); 
 
       setModalOpen(false);
@@ -265,7 +263,7 @@ const DashboardFuncionario = () => {
 
   const getStatusKey = (status) => {
     const map = {
-      'Novas': 'novas',
+      'Novos': 'novas',
       'Em Andamento': 'em_andamento',
       'Aguardando Revisão': 'aguardando_revisao',
       'Concluídas': 'concluidas'
@@ -326,7 +324,7 @@ const DashboardFuncionario = () => {
             <div className="notifications">
               <Bell size={24} />
               <span className="badge">
-                {dados?.notificacoes.filter(n => !n.lida).length || 0}
+                {dados?.notificacoes.filter(n => !n.lida).length}
               </span>
             </div>
             <img src={dados?.user.avatar} alt="User" className="user-avatar" />
@@ -415,7 +413,7 @@ const DashboardFuncionario = () => {
                       className="kanban-card"
                     >
                       <div className="card-header">
-                        <span className="processo-id">DEM-{demanda.id}</span>
+                        <span className="processo-id">{demanda.id}</span>
                         <span className={`priority-badge ${getPrioridadeClass(demanda.prioridade)}`}>
                           {demanda.prioridade}
                         </span>
@@ -493,7 +491,7 @@ const DashboardFuncionario = () => {
                 <div className="modal-body">
                   <div className="detail-row">
                     <strong>ID:</strong>
-                    <span>DEM-{demandaSelecionada.id}</span>
+                    <span>{demandaSelecionada.id}</span>
                   </div>
                   
                   <div className="detail-row">
