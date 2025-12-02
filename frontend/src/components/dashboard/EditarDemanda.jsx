@@ -33,6 +33,45 @@ function EditarDemanda({ demanda, onDemandaAtualizada, onCancel }) {
   const [usuarios, setUsuarios] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [autoSaveMessage, setAutoSaveMessage] = useState(''); // RNF04: Mensagem de auto-save
+
+  // RNF04: Auto-save a cada 2 minutos
+  useEffect(() => {
+    const autoSaveKey = `editar_demanda_${demanda.id}`;
+    
+    // Tenta recuperar dados salvos anteriormente
+    const savedData = localStorage.getItem(autoSaveKey);
+    if (savedData) {
+      try {
+        const parsed = JSON.parse(savedData);
+        setFormData(prev => ({
+          ...prev,
+          ...parsed,
+          responsavel_id: parsed.responsavel_id || prev.responsavel_id
+        }));
+        setAutoSaveMessage('📝 Rascunho recuperado do auto-save');
+        setTimeout(() => setAutoSaveMessage(''), 5000);
+      } catch (e) {
+        console.error('Erro ao recuperar auto-save:', e);
+      }
+    }
+
+    // Configura auto-save a cada 2 minutos (120.000ms)
+    const autoSaveInterval = setInterval(() => {
+      localStorage.setItem(autoSaveKey, JSON.stringify(formData));
+      setAutoSaveMessage('💾 Rascunho salvo automaticamente');
+      setTimeout(() => setAutoSaveMessage(''), 3000);
+    }, 120000); // 2 minutos
+
+    return () => {
+      clearInterval(autoSaveInterval);
+    };
+  }, [formData, demanda.id]);
+
+  // Limpa auto-save após envio bem-sucedido
+  const limparAutoSave = () => {
+    localStorage.removeItem(`editar_demanda_${demanda.id}`);
+  };
 
   // Efeito para carregar a lista de usuários (para o campo Responsável)
   useEffect(() => {
@@ -93,6 +132,7 @@ function EditarDemanda({ demanda, onDemandaAtualizada, onCancel }) {
       const response = await demandasAPI.update(demanda.id, dadosAtualizados);
 
       if (response.data) {
+        limparAutoSave(); // RNF04: Remove rascunho após salvar
         // Notifica o dashboard pai para recarregar ou atualizar a lista
         onDemandaAtualizada(response.data.demanda);
       }
@@ -109,6 +149,19 @@ function EditarDemanda({ demanda, onDemandaAtualizada, onCancel }) {
   return (
     <div className="card-cadastro-demanda">
       <h2>Editar Demanda: {demanda.titulo}</h2>
+      
+      {autoSaveMessage && (
+        <div style={{
+          padding: '8px 12px',
+          marginBottom: '16px',
+          backgroundColor: '#e3f2fd',
+          color: '#1565c0',
+          borderRadius: '4px',
+          fontSize: '14px'
+        }}>
+          {autoSaveMessage}
+        </div>
+      )}
       
       <form onSubmit={handleSubmit}>
         
@@ -215,6 +268,7 @@ function EditarDemanda({ demanda, onDemandaAtualizada, onCancel }) {
             className="btn-secondary"
             onClick={onCancel}
             disabled={loading}
+            style={{ opacity: loading ? 0.6 : 1, cursor: loading ? 'not-allowed' : 'pointer' }}
           >
             <X size={18} />
             Cancelar
@@ -223,9 +277,33 @@ function EditarDemanda({ demanda, onDemandaAtualizada, onCancel }) {
             type="submit"
             className="btn-primary"
             disabled={loading}
+            style={{ 
+              opacity: loading ? 0.7 : 1, 
+              cursor: loading ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
           >
-            <Save size={18} />
-            {loading ? 'Salvando...' : 'Salvar Alterações'}
+            {loading ? (
+              <>
+                <span style={{
+                  width: '16px',
+                  height: '16px',
+                  border: '2px solid #fff',
+                  borderTop: '2px solid transparent',
+                  borderRadius: '50%',
+                  animation: 'spin 0.6s linear infinite',
+                  display: 'inline-block'
+                }} />
+                Salvando...
+              </>
+            ) : (
+              <>
+                <Save size={18} />
+                Salvar Alterações
+              </>
+            )}
           </button>
         </div>
       </form>

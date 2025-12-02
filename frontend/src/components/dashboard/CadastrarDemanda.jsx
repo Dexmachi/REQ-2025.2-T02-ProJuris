@@ -8,10 +8,57 @@ function CadastrarDemanda({ onDemandaCriada, onCancel }) {
     data_prazo: '',
     responsavel_id: '',
     prioridade: 'normal',
+    coluna_inicial: '', // Nova coluna para escolher onde a demanda começa
   });
   const [usuarios, setUsuarios] = useState([]);
+  const [colunasNovas, setColunasNovas] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [autoSaveMessage, setAutoSaveMessage] = useState(''); // RNF04
+
+  // RNF04: Auto-save a cada 2 minutos
+  useEffect(() => {
+    const autoSaveKey = 'cadastrar_demanda_draft';
+    
+    // Recupera rascunho anterior
+    const savedData = localStorage.getItem(autoSaveKey);
+    if (savedData) {
+      try {
+        const parsed = JSON.parse(savedData);
+        setFormData(prev => ({
+          ...prev,
+          titulo: parsed.titulo || '',
+          descricao: parsed.descricao || '',
+          data_prazo: parsed.data_prazo || '',
+          prioridade: parsed.prioridade || 'normal'
+        }));
+        setAutoSaveMessage('📝 Rascunho recuperado do auto-save');
+        setTimeout(() => setAutoSaveMessage(''), 5000);
+      } catch (e) {
+        console.error('Erro ao recuperar auto-save:', e);
+      }
+    }
+
+    // Auto-save a cada 2 minutos
+    const autoSaveInterval = setInterval(() => {
+      if (formData.titulo || formData.descricao) { // Só salva se houver conteúdo
+        localStorage.setItem(autoSaveKey, JSON.stringify({
+          titulo: formData.titulo,
+          descricao: formData.descricao,
+          data_prazo: formData.data_prazo,
+          prioridade: formData.prioridade
+        }));
+        setAutoSaveMessage('💾 Rascunho salvo automaticamente');
+        setTimeout(() => setAutoSaveMessage(''), 3000);
+      }
+    }, 120000); // 2 minutos
+
+    return () => clearInterval(autoSaveInterval);
+  }, [formData]);
+
+  const limparAutoSave = () => {
+    localStorage.removeItem('cadastrar_demanda_draft');
+  };
 
   useEffect(() => {
     // Busca a lista de usuários para popular o campo 'Responsável' (RF03)
@@ -25,6 +72,19 @@ function CadastrarDemanda({ onDemandaCriada, onCancel }) {
       .catch(err => {
         console.error("Erro ao carregar usuários:", err);
         setError("Não foi possível carregar a lista de responsáveis.");
+      });
+    
+    // Busca colunas do tipo "nova" para escolha inicial
+    api.get('/kanban/colunas')
+      .then(response => {
+        const colunasNovasDemanda = response.data.filter(col => col.tipo_coluna === 'nova');
+        setColunasNovas(colunasNovasDemanda);
+        if (colunasNovasDemanda.length > 0) {
+          setFormData(prev => ({ ...prev, coluna_inicial: colunasNovasDemanda[0].tipo_coluna }));
+        }
+      })
+      .catch(err => {
+        console.error("Erro ao carregar colunas:", err);
       });
   }, []);
 
@@ -42,13 +102,18 @@ function CadastrarDemanda({ onDemandaCriada, onCancel }) {
 
     // Converte o data_prazo de volta para o formato ISO 8601 (o backend espera)
     const data_prazo_iso = new Date(formData.data_prazo).toISOString();
+    
+    // Define o tipo de coluna inicial ou usa padrão 'nova'
+    const tipoInicial = formData.coluna_inicial || 'nova';
 
     try {
       const response = await api.post('/demandas', {
-        ...formData,
-        data_prazo: data_prazo_iso, // Usa o formato ISO
+        titulo: formData.titulo,
+        descricao: formData.descricao,
+        data_prazo: data_prazo_iso,
         responsavel_id: parseInt(formData.responsavel_id),
         prioridade: formData.prioridade,
+        tipo_coluna: tipoInicial, // Usa tipo_coluna ao invés de status
       });
 
       // Limpa o formulário
@@ -59,6 +124,8 @@ function CadastrarDemanda({ onDemandaCriada, onCancel }) {
         responsavel_id: usuarios[0]?.id || '', 
         prioridade: 'normal',
       });
+      
+      limparAutoSave(); // RNF04: Remove rascunho após salvar
       
       // Notifica o Dashboard pai
       if (onDemandaCriada) {
@@ -81,6 +148,19 @@ function CadastrarDemanda({ onDemandaCriada, onCancel }) {
   return (
     <div className="card-cadastro-demanda">
       <h2>Cadastrar Nova Demanda</h2>
+      
+      {autoSaveMessage && (
+        <div style={{
+          padding: '8px 12px',
+          marginBottom: '16px',
+          backgroundColor: '#e3f2fd',
+          color: '#1565c0',
+          borderRadius: '4px',
+          fontSize: '14px'
+        }}>
+          {autoSaveMessage}
+        </div>
+      )}
       
       <form onSubmit={handleSubmit}>
         {error && <p style={{ color: 'red' }}>{error}</p>}
@@ -141,6 +221,30 @@ function CadastrarDemanda({ onDemandaCriada, onCancel }) {
             <option value="urgente">Urgente</option>
           </select>
         </div>
+
+        {/* NOVO BLOCO: Coluna Inicial */}
+        {colunasNovas.length > 0 && (
+          <div>
+            <label htmlFor="coluna_inicial">Coluna Inicial</label>
+            <select
+              id="coluna_inicial"
+              name="coluna_inicial"
+              value={formData.coluna_inicial}
+              onChange={handleChange}
+              required
+              disabled={loading}
+            >
+              {colunasNovas.map(coluna => (
+                <option key={coluna.id} value={coluna.tipo_coluna}>
+                  {coluna.nome}
+                </option>
+              ))}
+            </select>
+            <small style={{ color: '#6b7280', fontSize: '0.875rem' }}>
+              Escolha em qual coluna de novas demandas esta tarefa deve começar
+            </small>
+          </div>
+        )}
         
         <div>
           <label htmlFor="responsavel_id">Responsável *</label>
@@ -168,12 +272,36 @@ function CadastrarDemanda({ onDemandaCriada, onCancel }) {
               className="btn-cancel"
               onClick={onCancel}
               disabled={loading}
+              style={{ opacity: loading ? 0.6 : 1, cursor: loading ? 'not-allowed' : 'pointer' }}
             >
               Cancelar
             </button>
           )}
           
-          <button type="submit" disabled={loading}>
+          <button 
+            type="submit" 
+            disabled={loading}
+            style={{ 
+              opacity: loading ? 0.7 : 1, 
+              cursor: loading ? 'not-allowed' : 'pointer',
+              position: 'relative',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px'
+            }}
+          >
+            {loading && (
+              <span style={{
+                width: '16px',
+                height: '16px',
+                border: '2px solid #fff',
+                borderTop: '2px solid transparent',
+                borderRadius: '50%',
+                animation: 'spin 0.6s linear infinite',
+                display: 'inline-block'
+              }} />
+            )}
             {loading ? 'Cadastrando...' : 'Cadastrar Demanda'}
           </button>
         </div>

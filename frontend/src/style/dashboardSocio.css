@@ -362,6 +362,34 @@
     margin: 0;
 }
 
+.section-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.btn-editar-colunas {
+    background-color: var(--primary-blue);
+    color: white;
+    border: none;
+    padding: 0.625rem 1.25rem;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s;
+    box-shadow: 0 2px 4px rgba(30, 58, 138, 0.2);
+}
+
+.btn-editar-colunas:hover {
+    background-color: #1e40af;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(30, 58, 138, 0.3);
+}
+
 .btn-link {
     background: none;
     border: none;
@@ -386,7 +414,6 @@
 }
 
 .kanban-column {
-    background: var(--gray-50);
     border-radius: 10px;
     padding: 1rem;
     min-height: 300px;
@@ -397,8 +424,8 @@
     justify-content: space-between;
     align-items: center;
     margin-bottom: 1rem;
-    padding-bottom: 0.75rem;
-    border-bottom: 2px solid var(--gray-200);
+    padding: 0.75rem;
+    border-radius: 8px;
 }
 
 .column-header h3 {

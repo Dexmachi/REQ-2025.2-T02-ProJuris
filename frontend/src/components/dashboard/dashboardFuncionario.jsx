@@ -2,14 +2,37 @@ import React, { useState, useEffect } from 'react';
 import { Bell, CheckCircle, Clock, Calendar, AlertTriangle, List, Eye, Send, MessageSquare, Menu, User, Edit,LogOut } from 'lucide-react';
 import '../../style/dashboardFuncionario.css';
 import EditarDemanda from './EditarDemanda';
-import { demandasAPI } from '../../services/api'; // Importa a API
+import SkeletonLoader from '../common/SkeletonLoader';
+import { demandasAPI, kanbanAPI, notificacoesAPI } from '../../services/api'; // Importa a API
 
 import { useAuth } from '../../context/authContext'; // Importa o contexto para o usuário logado
+
+// Função para converter hex para rgba
+const hexToRgba = (hex, alpha) => {
+  if (!hex || typeof hex !== 'string') return `rgba(200, 200, 200, ${alpha})`;
+  
+  // Remove o # se existir
+  hex = hex.replace('#', '');
+  
+  // Se a cor tiver 3 caracteres, expande para 6
+  if (hex.length === 3) {
+    hex = hex.split('').map(char => char + char).join('');
+  }
+  
+  if (hex.length !== 6) return `rgba(200, 200, 200, ${alpha})`;
+  
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+  
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
 
 const DashboardFuncionario = () => {
   const { user } = useAuth(); // Obtém o usuário logado (João/Maria)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [dados, setDados] = useState(null);
+  const [colunas, setColunas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [draggedCard, setDraggedCard] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -44,13 +67,12 @@ const DashboardFuncionario = () => {
   };
 
   // Funções de Mapeamento: Converte dados do DB para o formato do Kanban do Funcionário, aplicando filtro
-  const formatDemandasToKanbanFuncionario = (demandasArray, currentUserId) => {
-    const kanban = {
-      novas: [],
-      em_andamento: [],
-      aguardando_revisao: [],
-      concluidas: [],
-    };
+  const formatDemandasToKanbanFuncionario = (demandasArray, currentUserId, colunasArray) => {
+    // Cria objeto kanban dinamicamente baseado nas colunas (por ID)
+    const kanban = {};
+    colunasArray.forEach(col => {
+      kanban[col.id] = [];
+    });
     
     // Filtra apenas as demandas atribuídas a este usuário
     demandasArray
@@ -59,24 +81,16 @@ const DashboardFuncionario = () => {
         const dataPrazo = new Date(d.data_prazo);
         const prazoFormatado = `${dataPrazo.getDate().toString().padStart(2, '0')}/${(dataPrazo.getMonth() + 1).toString().padStart(2, '0')}/${dataPrazo.getFullYear()}`;
         
-        let statusKey;
-        switch (d.status) {
-          case 'Elaboração':
-          case 'Nova':
-            statusKey = 'novas';
-            break;
-          case 'Em Andamento':
-            statusKey = 'em_andamento';
-            break;
-          case 'Aguardando Revisão':
-            statusKey = 'aguardando_revisao';
-            break;
-          case 'Concluído':
-          case 'Concluídos':
-            statusKey = 'concluidas';
-            break;
-          default:
-            statusKey = 'novas';
+        // Usa coluna_id como chave
+        const colunaId = d.coluna_id;
+        
+        // Se coluna_id for null/undefined, tenta encontrar coluna pelo tipo
+        let colunaFinal = colunaId;
+        if (!colunaFinal) {
+          const coluna = colunasArray.find(c => c.tipo_coluna === d.status);
+          if (coluna) {
+            colunaFinal = coluna.id;
+          }
         }
 
         const item = {
@@ -89,8 +103,8 @@ const DashboardFuncionario = () => {
           responsavelId: d.responsavel_id
         };
 
-        if (kanban[statusKey]) {
-          kanban[statusKey].push(item);
+        if (colunaFinal && kanban[colunaFinal]) {
+          kanban[colunaFinal].push(item);
         }
       });
 
@@ -108,32 +122,45 @@ const DashboardFuncionario = () => {
     try {
       setLoading(true);
       
+      // 1. Carrega as colunas do Kanban
+      const colunasResponse = await kanbanAPI.getColunas();
+      const colunasArray = colunasResponse.data.sort((a, b) => a.ordem - b.ordem);
+      setColunas(colunasArray);
+      
+      // 2. Carrega as demandas
       const demandaResponse = await demandasAPI.getAll();
       const demandasBackend = demandaResponse.data;
 
-      const kanbanData = formatDemandasToKanbanFuncionario(demandasBackend, userId);
+      // 3. Carrega as notificações
+      const notificacoesResponse = await notificacoesAPI.getAll();
+      const notificacoesData = notificacoesResponse.data.notificacoes || [];
+
+      const kanbanData = formatDemandasToKanbanFuncionario(demandasBackend, userId, colunasArray);
 
       const totalDemandasFuncionario = demandasBackend.filter(d => d.responsavel_id === userId).length;
-      const emAndamento = kanbanData.em_andamento.length;
-      const aguardandoRevisao = kanbanData.aguardando_revisao.length;
+      
+      // Conta demandas por tipo de coluna dinamicamente
+      const stats = { total: totalDemandasFuncionario };
+      Object.keys(kanbanData).forEach(tipo => {
+        stats[tipo] = kanbanData[tipo].length;
+      });
 
       const combinedData = {
           user: mockData.user, 
           stats: {
             ...mockData.stats,
-            total: totalDemandasFuncionario,
-            emAndamento,
-            aguardandoRevisao
+            ...stats
           }, 
-          demandas: kanbanData, // DADOS REAIS
-          notificacoes: mockData.notificacoes 
+          kanban: kanbanData, // DADOS REAIS - Corrigido de demandas para kanban
+          notificacoes: notificacoesData,
+          nao_lidas: notificacoesResponse.data.nao_lidas || 0
       };
 
       setDados(combinedData);
       setLoading(false);
     } catch (error) {
       console.error('Erro:', error);
-      setDados(mockData);
+      setDados({ ...mockData, notificacoes: [], nao_lidas: 0 });
       setLoading(false);
     }
   };
@@ -182,17 +209,33 @@ const DashboardFuncionario = () => {
     { icon: User, label: 'Meu Perfil' }
   ];
 
-  const handleDragStart = (e, demanda, status) => {
-    setDraggedCard({ demanda, status });
+  const handleDragStart = (e, demanda, colunaOrigem) => {
+    setDraggedCard({ demanda, colunaOrigem });
     e.currentTarget.style.opacity = '0.5';
   };
 
   const handleDragEnd = (e) => {
     e.currentTarget.style.opacity = '1';
+    // Remove classes de highlight de todas as colunas
+    document.querySelectorAll('.column-content').forEach(col => {
+      col.classList.remove('drag-over', 'drag-invalid');
+    });
   };
 
   const handleDragOver = (e) => {
     e.preventDefault();
+    
+    // Adiciona classe visual para mostrar que pode soltar aqui
+    if (e.currentTarget.classList.contains('column-content')) {
+      e.currentTarget.classList.add('drag-over');
+    }
+  };
+
+  const handleDragLeave = (e) => {
+    // Remove classe visual quando sai da área
+    if (e.currentTarget.classList.contains('column-content')) {
+      e.currentTarget.classList.remove('drag-over');
+    }
   };
 
   const handleLogout = () => {
@@ -201,61 +244,66 @@ const DashboardFuncionario = () => {
 };
 
 
-  const handleDrop = async (e, novoStatus) => {
+  const handleDrop = async (e, colunaDestino) => {
     e.preventDefault();
 
     if (!draggedCard) return;
 
-    const { demanda, status: statusAntigo } = draggedCard;
+    const { demanda, colunaOrigem } = draggedCard;
 
-    // Mapeia o status do Frontend (Key) para o status do Backend (Valor)
-    let novoStatusBackend;
-    switch (novoStatus) {
-      case 'novas':
-        novoStatusBackend = 'Elaboração';
-        break;
-      case 'em_andamento':
-        novoStatusBackend = 'Em Andamento';
-        break;
-      case 'aguardando_revisao':
-        novoStatusBackend = 'Aguardando Revisão';
-        break;
-      case 'concluidas':
-        novoStatusBackend = 'Concluído';
-        break;
-      default:
-        return;
+    // Se soltou na mesma coluna, não faz nada
+    if (colunaOrigem.id === colunaDestino.id) {
+      setDraggedCard(null);
+      return;
     }
 
-    // Regras de negócio
+    // Regras de negócio (validações no frontend, mas o backend tem a palavra final)
     if (demanda.responsavelId !== userId) {
       alert('❌ Você só pode mover demandas atribuídas a você!');
+      setDraggedCard(null);
       return;
     }
 
-    if (statusAntigo === 'aguardando_revisao' && novoStatus === 'em_andamento') {
+    // Bloqueia movimento de colunas de revisão (revisao -> qualquer outra)
+    if (colunaOrigem.tipo_coluna === 'revisao' && colunaDestino.tipo_coluna !== 'revisao') {
       alert('⚠️ Demandas em revisão não podem voltar. Aguarde aprovação do sócio.');
+      setDraggedCard(null);
       return;
     }
 
-    if (novoStatus === 'concluidas') {
+    // Bloqueia movimento para colunas concluídas
+    if (colunaDestino.tipo_coluna === 'concluido') {
       alert('⚠️ Apenas o sócio pode marcar demandas como concluídas. Envie para revisão.');
+      setDraggedCard(null);
       return;
     }
 
     setDraggedCard(null);
 
     try {
-        // 2. Chama a API para atualizar o status (PATCH /demandas/<id>/status)
-        await demandasAPI.updateStatus(demanda.id, novoStatusBackend);
+        // Chama a API para atualizar o status (PATCH /demandas/<id>/status)
+        await demandasAPI.updateStatus(demanda.id, colunaDestino.tipo_coluna, colunaDestino.id);
         
-        // 3. Recarrega os dados do dashboard para refletir a persistência
+        // Mensagem de sucesso ao enviar para revisão
+        if (colunaDestino.tipo_coluna === 'revisao') {
+          alert('✅ Demanda enviada para revisão! O sócio será notificado.');
+        }
+        
+        // Recarrega os dados do dashboard
         loadDados();
-        //alert(`✅ Status atualizado para: ${novoStatusBackend}`);
 
     } catch (error) {
         console.error('Erro ao persistir movimento:', error);
-        alert('❌ Falha ao atualizar o status da demanda. Verifique sua permissão.');
+        
+        // Trata erros específicos das regras de coluna
+        if (error.response?.data?.tipo === 'restricao_revisao') {
+          alert('⚠️ Você não pode mover demandas de colunas de revisão.');
+        } else if (error.response?.data?.tipo === 'restricao_concluido') {
+          alert('⚠️ Apenas sócios podem mover demandas para colunas concluídas.');
+        } else {
+          alert('❌ Falha ao atualizar o status da demanda. Verifique sua permissão.');
+        }
+        
         loadDados(); // Recarrega para voltar o cartão para a posição salva no DB
     }
   };
@@ -284,6 +332,17 @@ const DashboardFuncionario = () => {
     return prioridade?.toLowerCase() || 'normal';
   };
 
+  // Mapeamento de ícones por tipo de coluna
+  const getIconForTipo = (tipo) => {
+    switch(tipo) {
+      case 'nova': return <List size={16} />;
+      case 'em_andamento': return <Clock size={16} />;
+      case 'revisao': return <AlertTriangle size={16} />;
+      case 'concluido': return <CheckCircle size={16} />;
+      default: return <List size={16} />;
+    }
+  };
+
   const getStatusLabel = (status) => {
     const labels = {
       novas: 'Novas',
@@ -294,22 +353,41 @@ const DashboardFuncionario = () => {
     return labels[status] || status;
   };
 
-  const getStatusKey = (status) => {
-    const map = {
-      'Novos': 'novas',
-      'Em Andamento': 'em_andamento',
-      'Aguardando Revisão': 'aguardando_revisao',
-      'Concluídas': 'concluidas'
-    };
-    return map[status] || status;
-  };
-
 
   if (loading || !userId) { 
     return (
-      <div className="loading-container">
-        <div className="loading-spinner"></div>
-        <p>Carregando...</p>
+      <div className="dashboard-funcionario">
+        <aside className="sidebar">
+          <div className="logo">
+            <SkeletonLoader type="text" width="120px" />
+          </div>
+          <nav className="nav-menu">
+            <SkeletonLoader type="list-item" count={6} />
+          </nav>
+        </aside>
+        <main className="main-content">
+          <header className="header">
+            <SkeletonLoader type="text" width="200px" />
+            <SkeletonLoader type="circle" />
+          </header>
+          <div className="stats-grid">
+            <SkeletonLoader type="card" count={4} height="100px" />
+          </div>
+          <div className="kanban-section">
+            <SkeletonLoader type="text" width="250px" />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginTop: '16px' }}>
+              <div>
+                <SkeletonLoader type="kanban-card" count={2} />
+              </div>
+              <div>
+                <SkeletonLoader type="kanban-card" count={3} />
+              </div>
+              <div>
+                <SkeletonLoader type="kanban-card" count={1} />
+              </div>
+            </div>
+          </div>
+        </main>
       </div>
     );
   }
@@ -356,7 +434,7 @@ const DashboardFuncionario = () => {
           <div className="header-right">
                       <div className="notifications">
                         <Bell size={24} />
-                        <span className="badge">3</span>
+                        <span className="badge">{dados?.nao_lidas || 0}</span>
                       </div>
                       <LogoutButton
                         userName={dados?.user.nome}
@@ -414,39 +492,61 @@ const DashboardFuncionario = () => {
           <h2>Quadro de Demandas</h2>
 
           <div className="kanban-board">
-            {Object.entries(dados?.demandas || {}).map(([status, demandas]) => (
-              <div
-                key={status}
-                className={`kanban-column 
-                 ${status === "novas" ? "status-novos" : ""}
-                 ${status === "em_andamento" ? "status-andamento" : ""}
-                 ${status === "aguardando_revisao" ? "status-revisao" : ""}
-                 ${status === "concluidas" ? "status-concluido" : ""}
-              `}>
-                <div className="column-header">
-                  <h3>
-                    {status === 'novas' && <List size={16} />}
-                    {status === 'em_andamento' && <Clock size={16} />}
-                    {status === 'aguardando_revisao' && <Clock size={16} />}
-                    {status === 'concluidas' && <CheckCircle size={16} />}
-                    {getStatusLabel(status)}
-                  </h3>
-                  <span className="count">{demandas.length}</span>
-                </div>
+            {colunas.map((coluna) => {
+              const demandas = dados?.kanban?.[coluna.id] || [];
 
+              return (
                 <div
-                  className="column-content"
-                  onDragOver={handleDragOver}
-                  onDrop={(e) => handleDrop(e, status)}
+                  key={coluna.id}
+                  style={{ 
+                    backgroundColor: hexToRgba(coluna.cor, 0.3),
+                    border: `3px solid ${coluna.cor}`,
+                    borderRadius: '10px',
+                    padding: '1rem',
+                    minHeight: '200px'
+                  }}
                 >
-                  {demandas.map((demanda) => (
-                    <div
-                      key={demanda.id}
-                      draggable
-                      onDragStart={(e) => handleDragStart(e, demanda, status)}
-                      onDragEnd={handleDragEnd}
-                      className="kanban-card"
-                    >
+                  <div style={{ 
+                    background: `linear-gradient(135deg, ${hexToRgba(coluna.cor, 0.5)} 0%, ${hexToRgba(coluna.cor, 0.4)} 100%)`,
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '1rem',
+                    padding: '0.75rem',
+                    borderRadius: '8px'
+                  }}>
+                    <h3>
+                      <span style={{ color: coluna.cor }}>
+                        {getIconForTipo(coluna.tipo_coluna)}
+                      </span>
+                      {coluna.nome}
+                    </h3>
+                    <span className="count" style={{ 
+                      backgroundColor: coluna.cor,
+                      color: 'white',
+                      padding: '0.25rem 0.5rem',
+                      borderRadius: '12px',
+                      fontSize: '0.875rem',
+                      fontWeight: '600'
+                    }}>
+                      {demandas.length}
+                    </span>
+                  </div>
+
+                  <div
+                    className="column-content"
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => handleDrop(e, coluna)}
+                  >
+                    {demandas.map((demanda) => (
+                      <div
+                        key={demanda.id}
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, demanda, coluna)}
+                        onDragEnd={handleDragEnd}
+                        className="kanban-card"
+                      >
                       <div className="card-header">
                         <span className="processo-id">{demanda.id}</span>
                         <span className={`priority-badge ${getPrioridadeClass(demanda.prioridade)}`}>
@@ -474,7 +574,8 @@ const DashboardFuncionario = () => {
                   ))}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
@@ -482,22 +583,46 @@ const DashboardFuncionario = () => {
         <div className="notifications-section">
           <h2>Notificações</h2>
           <div className="notifications-list">
-            {dados?.notificacoes.map((notif) => (
-              <div
-                key={notif.id}
-                className={`notification-item ${!notif.lida ? 'unread' : ''}`}
-              >
-                <Bell size={20} className={notif.urgente ? 'urgent' : ''} />
-                <div className="notification-content">
-                  <h4>
-                    {notif.tipo}
-                    {notif.urgente && <span className="badge-urgente">Urgente</span>}
-                  </h4>
-                  <p>{notif.mensagem}</p>
-                  <span className="time">{notif.tempo}</span>
-                </div>
-              </div>
-            ))}
+            {dados?.notificacoes && dados.notificacoes.length > 0 ? (
+              dados.notificacoes.map((notif) => {
+                // Formata a data para tempo relativo
+                const dataNotif = new Date(notif.data_criacao);
+                const agora = new Date();
+                const diffMs = agora - dataNotif;
+                const diffHoras = Math.floor(diffMs / (1000 * 60 * 60));
+                const diffDias = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                
+                let tempoRelativo;
+                if (diffDias > 0) {
+                  tempoRelativo = `Há ${diffDias} dia${diffDias > 1 ? 's' : ''}`;
+                } else if (diffHoras > 0) {
+                  tempoRelativo = `Há ${diffHoras} hora${diffHoras > 1 ? 's' : ''}`;
+                } else {
+                  tempoRelativo = 'Agora mesmo';
+                }
+
+                return (
+                  <div
+                    key={notif.id}
+                    className={`notification-item ${!notif.lida ? 'unread' : ''}`}
+                  >
+                    <Bell size={20} />
+                    <div className="notification-content">
+                      <h4>
+                        {notif.tipo}
+                        {!notif.lida && <span className="badge-urgente">Nova</span>}
+                      </h4>
+                      <p>{notif.mensagem}</p>
+                      <span className="time">{tempoRelativo}</span>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <p style={{ textAlign: 'center', color: '#888', padding: '20px' }}>
+                Nenhuma notificação
+              </p>
+            )}
           </div>
         </div>
       </main>

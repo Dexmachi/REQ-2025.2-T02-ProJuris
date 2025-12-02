@@ -7,3 +7,6 @@ Flask-CORS
 PyJWT
 python-dotenv
 PyYAML
+reportlab
+pandas
+openpyxl

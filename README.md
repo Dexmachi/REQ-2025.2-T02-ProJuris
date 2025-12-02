@@ -23,13 +23,56 @@ O sistema foi pensado para atender às necessidades específicas do escritório 
 
 ##  Funcionalidades Principais
 
-* Cadastro de usuários e perfis de acesso.
-* Painel de controle com status visual das demandas.
-* Anexação e gerenciamento de arquivos.
-* Dashboard de indicadores de desempenho.
-* Notificações automáticas de prazos e atualizações.
-* Segurança da informação com controle de acesso granular.
-* Repositório pesquisável de cláusulas e modelos jurídicos.
+### Funcionalidades Base
+* Cadastro de usuários e perfis de acesso (sócio/funcionário)
+* Painel de controle Kanban com status visual das demandas
+* Gestão completa de demandas (criar, editar, excluir, movimentar)
+* Colunas personalizáveis do Kanban com cores e tipos de fluxo
+* Dashboard de indicadores de desempenho
+* Repositório pesquisável de cláusulas e modelos jurídicos
+
+### ✨ Funcionalidades Recém-Implementadas (Dez/2025)
+
+#### 🔐 RN03 - Sistema de Auditoria Compulsória
+* Registro automático de todas as ações críticas
+* Logs detalhados com usuário, timestamp e mudanças
+* Consulta de histórico completo por demanda
+* Acesso exclusivo de sócios aos logs completos
+* **[Documentação completa →](docs/IMPLEMENTACAO_COMPLETA.md#1-rn03---auditoria-compulsória-de-ações)**
+
+#### 💾 RNF04 - Auto-save de Formulários
+* Salvamento automático a cada 2 minutos
+* Recuperação de rascunhos ao reabrir formulário
+* Limpeza automática após envio bem-sucedido
+* Feedback visual para o usuário
+* **[Documentação completa →](docs/IMPLEMENTACAO_COMPLETA.md#2-rnf04---auto-save-em-formulários)**
+
+#### 🔔 RN04 - Sistema Completo de Notificações
+* **5 tipos de notificações automáticas:**
+  * Nova atribuição de demanda
+  * Reatribuição de responsável
+  * Mudança de status no Kanban
+  * Envio para revisão (notifica sócios)
+  * Prazo crítico (3 dias antes do vencimento)
+* Verificador automático de prazos (cron job)
+* API completa para consulta e marcação de lidas
+* **[Documentação completa →](docs/NOTIFICACOES.md)**
+
+#### 🔒 RNF01 - Controle de Acesso Robusto (RBAC)
+* Papéis bem definidos: Sócio (completo) e Funcionário (restrito)
+* Validações em todas as operações críticas
+* Retornos HTTP padronizados (403)
+* Restrições específicas:
+  * Funcionário não pode excluir demandas
+  * Funcionário não pode mover para "Concluído"
+  * Funcionário não pode mover demandas em "Revisão"
+  * Somente sócio gerencia colunas
+
+### 📚 Documentação Disponível
+* **[Guia de Uso](docs/GUIA_DE_USO.md)** - Como usar as novas funcionalidades
+* **[Implementação Completa](docs/IMPLEMENTACAO_COMPLETA.md)** - Detalhes técnicos
+* **[Sistema de Notificações](docs/NOTIFICACOES.md)** - Configuração e uso
+* **[Análise de Requisitos](docs/ANALISE_REQUISITOS_IMPLEMENTACAO.md)** - Status de todos os requisitos
 
 ---
 
