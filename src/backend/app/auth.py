@@ -3,7 +3,6 @@ from flask import Blueprint, request, jsonify
 from app import db
 from app.models import User
 from flask_login import login_user, logout_user, current_user, login_required
-from app.json_handler import save_user_to_json, update_user_json, delete_user_json
 import jwt
 import datetime
 from flask import current_app
@@ -43,13 +42,6 @@ def register():
     
     db.session.add(new_user)
     db.session.commit()
-    
-    # Salvar também em arquivo JSON
-    try:
-        json_path = save_user_to_json(new_user)
-        print(f"✅ Usuário salvo em JSON: {json_path}")
-    except Exception as e:
-        print(f"⚠️  Erro ao salvar JSON: {e}")
 
     return jsonify({
         'message': 'Usuário cadastrado com sucesso',

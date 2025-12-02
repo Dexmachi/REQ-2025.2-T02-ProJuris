@@ -80,7 +80,7 @@ function CadastrarDemanda({ onDemandaCriada, onCancel }) {
         const colunasNovasDemanda = response.data.filter(col => col.tipo_coluna === 'nova');
         setColunasNovas(colunasNovasDemanda);
         if (colunasNovasDemanda.length > 0) {
-          setFormData(prev => ({ ...prev, coluna_inicial: colunasNovasDemanda[0].tipo_coluna }));
+          setFormData(prev => ({ ...prev, coluna_inicial: colunasNovasDemanda[0].id }));
         }
       })
       .catch(err => {
@@ -103,8 +103,8 @@ function CadastrarDemanda({ onDemandaCriada, onCancel }) {
     // Converte o data_prazo de volta para o formato ISO 8601 (o backend espera)
     const data_prazo_iso = new Date(formData.data_prazo).toISOString();
     
-    // Define o tipo de coluna inicial ou usa padrão 'nova'
-    const tipoInicial = formData.coluna_inicial || 'nova';
+    // Define o ID da coluna inicial
+    const colunaId = formData.coluna_inicial;
 
     try {
       const response = await api.post('/demandas', {
@@ -113,7 +113,7 @@ function CadastrarDemanda({ onDemandaCriada, onCancel }) {
         data_prazo: data_prazo_iso,
         responsavel_id: parseInt(formData.responsavel_id),
         prioridade: formData.prioridade,
-        tipo_coluna: tipoInicial, // Usa tipo_coluna ao invés de status
+        coluna_id: colunaId ? parseInt(colunaId, 10) : null,
       });
 
       // Limpa o formulário
@@ -235,7 +235,7 @@ function CadastrarDemanda({ onDemandaCriada, onCancel }) {
               disabled={loading}
             >
               {colunasNovas.map(coluna => (
-                <option key={coluna.id} value={coluna.tipo_coluna}>
+                <option key={coluna.id} value={coluna.id}>
                   {coluna.nome}
                 </option>
               ))}

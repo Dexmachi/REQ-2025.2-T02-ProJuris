@@ -84,13 +84,19 @@ def create_demanda(current_user):
     except ValueError:
         return jsonify({'message': 'Formato de data de prazo inválido. Use formato ISO 8601.'}), 400
 
-    # 4. Define o status inicial (tipo de coluna) ou usa padrão
-    tipo_coluna_inicial = data.get('tipo_coluna', 'nova')
+    # 4. Define a coluna inicial ou usa padrão
+    coluna_id = data.get('coluna_id')
     
-    # Busca a coluna padrão baseada no tipo
-    coluna = KanbanColumn.query.filter_by(tipo_coluna=tipo_coluna_inicial).first()
-    if not coluna:
-        return jsonify({'message': f'Coluna do tipo "{tipo_coluna_inicial}" não encontrada.'}), 404
+    if coluna_id:
+        # Se foi especificado um ID de coluna, usa ele
+        coluna = KanbanColumn.query.get(coluna_id)
+        if not coluna:
+            return jsonify({'message': f'Coluna com ID {coluna_id} não encontrada.'}), 404
+    else:
+        # Caso contrário, busca a primeira coluna do tipo 'nova'
+        coluna = KanbanColumn.query.filter_by(tipo_coluna='nova').first()
+        if not coluna:
+            return jsonify({'message': 'Nenhuma coluna do tipo "nova" encontrada.'}), 404
 
     # 5. Cria a nova demanda 
     nova_demanda = Demanda(
@@ -99,7 +105,7 @@ def create_demanda(current_user):
         data_prazo=data_prazo,
         responsavel_id=data['responsavel_id'],
         prioridade=data.get('prioridade', 'normal'),
-        status=tipo_coluna_inicial,  # Status = tipo da coluna (nova, em_andamento, revisao, concluido)
+        status=coluna.tipo_coluna,  # Status = tipo da coluna (nova, em_andamento, revisao, concluido)
         coluna_id=coluna.id  # Vincula à coluna específica
     )
 
