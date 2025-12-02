@@ -1,4 +1,4 @@
-#!/bin/bash
+./start-all.sh#!/bin/bash
 
 echo "🚀 Iniciando LegisPRO - Sistema Completo"
 echo "========================================"
