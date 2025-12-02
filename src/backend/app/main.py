@@ -9,12 +9,23 @@ from app.importador import processar_importacao
 from datetime import datetime, timedelta
 from sqlalchemy import func, case
 import io
+from flask import send_from_directory, current_app
 
 bp = Blueprint('main', __name__)
 
 @bp.route('/', methods=['GET'])
 def index():
-    return jsonify({'message': 'API do Sistema de Advocacia no ar!'})
+    # Rota principal que serve o 'index.html' do React.
+    # O `static_folder` já foi configurado no `create_app`.
+    # O `errorhandler(404)` cuidará de servir o index.html para rotas do React.
+    return send_from_directory(current_app.static_folder, 'index.html')
+
+@bp.errorhandler(404)
+def not_found(e):
+    # Se uma rota de API não for encontrada, ou se for uma rota do React Router,
+    # serve o index.html principal. O React Router cuidará do resto.
+    return send_from_directory(current_app.static_folder, 'index.html')
+
 
 @bp.route('/dashboard', methods=['GET'])
 @token_required
