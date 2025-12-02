@@ -130,15 +130,25 @@ def create_demanda(current_user):
         
         # RN04: Notificação - Nova atribuição de demanda
         if nova_demanda.responsavel_id != current_user.id:
-            notificacao = Notificacao(
-                tipo='nova_atribuicao',
-                mensagem=f'Você foi atribuído à demanda "{nova_demanda.titulo}" por {current_user.nome}.',
-                destinatario_id=nova_demanda.responsavel_id,
-                demanda_id=nova_demanda.id,
-                remetente_id=current_user.id
-            )
-            db.session.add(notificacao)
-            db.session.commit()
+            # Verifica se já existe notificação idêntica nos últimos 10 segundos (evita duplicatas)
+            limite_tempo = datetime.utcnow() - timedelta(seconds=10)
+            notif_existente = Notificacao.query.filter(
+                Notificacao.destinatario_id == nova_demanda.responsavel_id,
+                Notificacao.demanda_id == nova_demanda.id,
+                Notificacao.tipo == 'nova_atribuicao',
+                Notificacao.data_criacao >= limite_tempo
+            ).first()
+            
+            if not notif_existente:
+                notificacao = Notificacao(
+                    tipo='nova_atribuicao',
+                    mensagem=f'Você foi atribuído à demanda "{nova_demanda.titulo}" por {current_user.nome}.',
+                    destinatario_id=nova_demanda.responsavel_id,
+                    demanda_id=nova_demanda.id,
+                    remetente_id=current_user.id
+                )
+                db.session.add(notificacao)
+                db.session.commit()
         
         return jsonify({'message': 'Demanda cadastrada com sucesso!', 'demanda': nova_demanda.to_dict()}), 201
     except Exception as e:
@@ -312,14 +322,24 @@ def confirmar_import_demandas(current_user):
             
             # Notificação
             if nova_demanda.responsavel_id != current_user.id:
-                notificacao = Notificacao(
-                    tipo='nova_atribuicao',
-                    mensagem=f'Você foi atribuído à demanda "{nova_demanda.titulo}" via importação por {current_user.nome}.',
-                    destinatario_id=nova_demanda.responsavel_id,
-                    demanda_id=nova_demanda.id,
-                    remetente_id=current_user.id
-                )
-                db.session.add(notificacao)
+                # Verifica se já existe notificação idêntica nos últimos 10 segundos (evita duplicatas)
+                limite_tempo = datetime.utcnow() - timedelta(seconds=10)
+                notif_existente = Notificacao.query.filter(
+                    Notificacao.destinatario_id == nova_demanda.responsavel_id,
+                    Notificacao.demanda_id == nova_demanda.id,
+                    Notificacao.tipo == 'nova_atribuicao',
+                    Notificacao.data_criacao >= limite_tempo
+                ).first()
+                
+                if not notif_existente:
+                    notificacao = Notificacao(
+                        tipo='nova_atribuicao',
+                        mensagem=f'Você foi atribuído à demanda "{nova_demanda.titulo}" via importação por {current_user.nome}.',
+                        destinatario_id=nova_demanda.responsavel_id,
+                        demanda_id=nova_demanda.id,
+                        remetente_id=current_user.id
+                    )
+                    db.session.add(notificacao)
         
         except Exception as e:
             demandas_puladas.append({
@@ -394,14 +414,24 @@ def update_demanda(current_user, demanda_id):
         
         # RN04: Notificação - Reatribuição de demanda
         if responsavel_antigo_id != data['responsavel_id']:
-            notificacao = Notificacao(
-                tipo='reatribuicao',
-                mensagem=f'A demanda "{demanda.titulo}" foi reatribuída para você por {current_user.nome}.',
-                destinatario_id=data['responsavel_id'],
-                demanda_id=demanda.id,
-                remetente_id=current_user.id
-            )
-            db.session.add(notificacao)
+            # Verifica se já existe notificação idêntica nos últimos 10 segundos (evita duplicatas)
+            limite_tempo = datetime.utcnow() - timedelta(seconds=10)
+            notif_existente = Notificacao.query.filter(
+                Notificacao.destinatario_id == data['responsavel_id'],
+                Notificacao.demanda_id == demanda.id,
+                Notificacao.tipo == 'reatribuicao',
+                Notificacao.data_criacao >= limite_tempo
+            ).first()
+            
+            if not notif_existente:
+                notificacao = Notificacao(
+                    tipo='reatribuicao',
+                    mensagem=f'A demanda "{demanda.titulo}" foi reatribuída para você por {current_user.nome}.',
+                    destinatario_id=data['responsavel_id'],
+                    demanda_id=demanda.id,
+                    remetente_id=current_user.id
+                )
+                db.session.add(notificacao)
     
     try:
         db.session.commit()
@@ -476,25 +506,45 @@ def patch_demanda_status(current_user, demanda_id):
             # Busca todos os sócios para notificar
             socios = User.query.filter_by(role='socio').all()
             for socio in socios:
-                notificacao = Notificacao(
-                    tipo='revisao',
-                    mensagem=f'{current_user.nome} enviou a demanda "{demanda.titulo}" para revisão.',
-                    destinatario_id=socio.id,
-                    demanda_id=demanda.id,
-                    remetente_id=current_user.id
-                )
-                db.session.add(notificacao)
+                # Verifica se já existe notificação idêntica nos últimos 10 segundos (evita duplicatas)
+                limite_tempo = datetime.utcnow() - timedelta(seconds=10)
+                notif_existente = Notificacao.query.filter(
+                    Notificacao.destinatario_id == socio.id,
+                    Notificacao.demanda_id == demanda.id,
+                    Notificacao.tipo == 'revisao',
+                    Notificacao.data_criacao >= limite_tempo
+                ).first()
+                
+                if not notif_existente:
+                    notificacao = Notificacao(
+                        tipo='revisao',
+                        mensagem=f'{current_user.nome} enviou a demanda "{demanda.titulo}" para revisão.',
+                        destinatario_id=socio.id,
+                        demanda_id=demanda.id,
+                        remetente_id=current_user.id
+                    )
+                    db.session.add(notificacao)
     
     # RN04: Notificação - Mudança de status (para o responsável, se não for quem moveu)
     if demanda.responsavel_id != current_user.id and coluna_destino.tipo_coluna != 'revisao':
-        notificacao = Notificacao(
-            tipo='mudanca_status',
-            mensagem=f'A demanda "{demanda.titulo}" foi movida para "{coluna_destino.nome}" por {current_user.nome}.',
-            destinatario_id=demanda.responsavel_id,
-            demanda_id=demanda.id,
-            remetente_id=current_user.id
-        )
-        db.session.add(notificacao)
+        # Verifica se já existe notificação idêntica nos últimos 10 segundos (evita duplicatas)
+        limite_tempo = datetime.utcnow() - timedelta(seconds=10)
+        notif_existente = Notificacao.query.filter(
+            Notificacao.destinatario_id == demanda.responsavel_id,
+            Notificacao.demanda_id == demanda.id,
+            Notificacao.tipo == 'mudanca_status',
+            Notificacao.data_criacao >= limite_tempo
+        ).first()
+        
+        if not notif_existente:
+            notificacao = Notificacao(
+                tipo='mudanca_status',
+                mensagem=f'A demanda "{demanda.titulo}" foi movida para "{coluna_destino.nome}" por {current_user.nome}.',
+                destinatario_id=demanda.responsavel_id,
+                demanda_id=demanda.id,
+                remetente_id=current_user.id
+            )
+            db.session.add(notificacao)
     
     # 6. Status anterior para histórico
     status_anterior = demanda.status

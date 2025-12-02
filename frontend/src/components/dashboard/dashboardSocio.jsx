@@ -65,10 +65,11 @@ const formatDemandasToKanban = (demandasArray, colunasArray) => {
       titulo: d.titulo,
       descricao: d.descricao,
       prazo: prazoFormatado,
+      data_prazo: d.data_prazo, // Mantém a data original do backend para edição
       responsavel: d.responsavel_email || 'Não Atribuído', 
       prioridade: d.prioridade || 'normal', 
       status: d.status,
-      responsavel_id: d.responsavel_id,
+      responsavel_id: Number(d.responsavel_id) || null,
     };
 
     // Adiciona na coluna correspondente pelo ID
@@ -710,7 +711,7 @@ const handleDrop = async (e, colunaDestino) => {
           onClose={() => setShowImportarDemandas(false)}
           onImportComplete={() => {
             setShowImportarDemandas(false);
-            carregarDados(); // Recarrega o kanban
+            loadDashboardData(); // Recarrega o kanban
           }}
         />
       )}

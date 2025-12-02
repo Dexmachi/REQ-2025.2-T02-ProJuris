@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
+import { useAuth } from '../../context/authContext';
 
 function CadastrarDemanda({ onDemandaCriada, onCancel }) {
+  const { user } = useAuth(); // Obtém o usuário logado
   const [formData, setFormData] = useState({
     titulo: '',
     descricao: '',
@@ -64,10 +66,10 @@ function CadastrarDemanda({ onDemandaCriada, onCancel }) {
     // Busca a lista de usuários para popular o campo 'Responsável' (RF03)
     api.get('/usuarios')
       .then(response => {
-        setUsuarios(response.data);
-        if (response.data.length > 0) {
-          setFormData(prev => ({ ...prev, responsavel_id: response.data[0].id }));
-        }
+        // Filtra o usuário logado da lista (sócio não pode se auto-atribuir)
+        const usuariosFiltrados = response.data.filter(u => u.id !== user?.id);
+        setUsuarios(usuariosFiltrados);
+        // Não pré-seleciona nenhum usuário, deixa vazio para forçar escolha
       })
       .catch(err => {
         console.error("Erro ao carregar usuários:", err);
@@ -86,7 +88,7 @@ function CadastrarDemanda({ onDemandaCriada, onCancel }) {
       .catch(err => {
         console.error("Erro ao carregar colunas:", err);
       });
-  }, []);
+  }, [user?.id]); // Adiciona user.id como dependência
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -256,13 +258,20 @@ function CadastrarDemanda({ onDemandaCriada, onCancel }) {
             required
             disabled={loading || usuarios.length === 0}
           >
-            <option value="">Selecione o Responsável</option>
+            <option value="">
+              {usuarios.length === 0 ? 'Nenhum funcionário disponível' : 'Selecione o Responsável'}
+            </option>
             {usuarios.map(user => (
               <option key={user.id} value={user.id}>
                 {user.nome ? `${user.nome} (${user.email})` : user.email}
               </option>
             ))}
           </select>
+          {usuarios.length === 0 && (
+            <small style={{ color: '#dc2626', fontSize: '0.875rem' }}>
+              Não há funcionários disponíveis. Cadastre funcionários primeiro.
+            </small>
+          )}
         </div>
         
         <div className="form-buttons">

@@ -4,14 +4,29 @@ import api, { demandasAPI } from '../../services/api';
 
 function EditarDemanda({ demanda, onDemandaAtualizada, onCancel }) {
   
-  // Função auxiliar para converter DD/MM/YYYY para o formato que o input espera
+  // Função auxiliar para converter a data do backend para o formato datetime-local
   const formatBackendDate = (dateString) => {
     if (!dateString) return '';
     try {
-      // Cria um objeto Date a partir da string ISO do backend
+      // Cria um objeto Date a partir da string do backend
       const date = new Date(dateString);
-      // Retorna no formato YYYY-MM-DDThh:mm, necessário para datetime-local
-      return date.toISOString().slice(0, 16); 
+      
+      // Verifica se a data é válida
+      if (isNaN(date.getTime())) {
+        console.error("Data inválida:", dateString);
+        return '';
+      }
+      
+      // Formata para YYYY-MM-DDTHH:mm (formato datetime-local)
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      
+      const formatted = `${year}-${month}-${day}T${hours}:${minutes}`;
+      console.log('Data formatada para input:', formatted, 'Original:', dateString);
+      return formatted;
     } catch (e) {
       console.error("Erro ao formatar data:", e);
       return '';
@@ -35,6 +50,28 @@ function EditarDemanda({ demanda, onDemandaAtualizada, onCancel }) {
   const [error, setError] = useState('');
   const [autoSaveMessage, setAutoSaveMessage] = useState(''); // RNF04: Mensagem de auto-save
 
+  // Atualiza formData quando a demanda prop mudar
+  useEffect(() => {
+    console.log('Demanda recebida:', demanda);
+    console.log('data_prazo original:', demanda.data_prazo);
+    console.log('responsavel_id original:', demanda.responsavel_id, 'tipo:', typeof demanda.responsavel_id);
+    const dataFormatada = formatBackendDate(demanda.data_prazo);
+    console.log('data_prazo formatada:', dataFormatada);
+    
+    // Garante que responsavel_id seja number para comparação correta com options
+    const responsavelId = demanda.responsavel_id ? Number(demanda.responsavel_id) : '';
+    console.log('responsavel_id convertido:', responsavelId, 'tipo:', typeof responsavelId);
+    
+    setFormData({
+      titulo: demanda.titulo || '',
+      descricao: demanda.descricao || '',
+      data_prazo: dataFormatada,
+      status: demanda.status || 'Elaboração',
+      prioridade: demanda.prioridade || 'normal', 
+      responsavel_id: responsavelId, 
+    });
+  }, [demanda]);
+
   // RNF04: Auto-save a cada 2 minutos
   useEffect(() => {
     const autoSaveKey = `editar_demanda_${demanda.id}`;
@@ -46,8 +83,12 @@ function EditarDemanda({ demanda, onDemandaAtualizada, onCancel }) {
         const parsed = JSON.parse(savedData);
         setFormData(prev => ({
           ...prev,
-          ...parsed,
-          responsavel_id: parsed.responsavel_id || prev.responsavel_id
+          titulo: parsed.titulo || prev.titulo,
+          descricao: parsed.descricao || prev.descricao,
+          prioridade: parsed.prioridade || prev.prioridade,
+          responsavel_id: parsed.responsavel_id || prev.responsavel_id,
+          // Mantém a data original se não houver data salva ou se estiver vazia
+          data_prazo: parsed.data_prazo || prev.data_prazo
         }));
         setAutoSaveMessage('📝 Rascunho recuperado do auto-save');
         setTimeout(() => setAutoSaveMessage(''), 5000);
@@ -246,7 +287,7 @@ function EditarDemanda({ demanda, onDemandaAtualizada, onCancel }) {
           <select
             id="responsavel_id"
             name="responsavel_id"
-            value={formData.responsavel_id}
+            value={formData.responsavel_id || ''}
             onChange={handleChange}
             required
             disabled={loading || usuarios.length === 0}
@@ -258,6 +299,11 @@ function EditarDemanda({ demanda, onDemandaAtualizada, onCancel }) {
               </option>
             ))}
           </select>
+          {formData.responsavel_id && (
+            <small style={{ color: '#10b981', fontSize: '0.875rem' }}>
+              Responsável atual: ID {formData.responsavel_id}
+            </small>
+          )}
         </div>
 
         {error && <div className="error-message" style={{ color: 'red' }}>{error}</div>}

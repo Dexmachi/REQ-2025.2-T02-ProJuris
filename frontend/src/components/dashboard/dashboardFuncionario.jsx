@@ -98,9 +98,10 @@ const DashboardFuncionario = () => {
           titulo: d.titulo,
           descricao: d.descricao,
           prazo: prazoFormatado,
+          data_prazo: d.data_prazo, // Mantém a data original do backend para edição
           prioridade: d.prioridade || 'normal', 
           atribuidoPor: 'Sócio', // Simplificado
-          responsavelId: d.responsavel_id
+          responsavel_id: Number(d.responsavel_id) || null
         };
 
         if (colunaFinal && kanban[colunaFinal]) {
